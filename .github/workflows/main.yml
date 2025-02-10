@@ -2,6 +2,19 @@ name: Deploy to Remote Server
 
 on:
   workflow_dispatch:
+    inputs:
+      branch_name:
+        description: '请填写分支名称'
+        required: true
+        default: 'dev'  # 设置默认的分支名
+      projects:
+        description: '需要发版的项目，全部发版时不填'
+        required: false
+        default: ''
+      cache:
+        description: '是否使用镜像缓存构建，1 为是，0 为否'
+        required: false
+        default: '1'
 
 jobs:
   deploy:
@@ -15,4 +28,5 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           cd /
-          ls -lah
+          chmod +x /usr/local/wujiaying/repos/egeek/build.sh
+          /usr/local/wujiaying/repos/egeek/build.sh ${{ github.event.inputs.branch_name }}
