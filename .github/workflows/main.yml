@@ -8,13 +8,14 @@ on:
         required: true
         default: 'dev'  # 设置默认的分支名
       projects:
-        description: '需要发版的项目，全部发版时不填'
+        description: '需要发版的项目。项目名称为 docker-compose.yaml 中的服务名称（如 www），多个项目名间用逗号隔开；不填代表全部发版。需注意项目间依赖关系。'
         required: false
-        default: ''
-      cache:
-        description: '是否使用镜像缓存构建，1 为是，0 为否'
-        required: false
-        default: '1'
+        default: 'proxy,www,template-mobile,template-server'
+      use_cache:
+        description: '是否使用镜像缓存构建'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   deploy:
@@ -29,4 +30,8 @@ jobs:
         script: |
           cd /
           chmod +x /usr/local/wujiaying/repos/egeek/build.sh
-          /usr/local/wujiaying/repos/egeek/build.sh ${{ github.event.inputs.branch_name }}
+          NO_CACHE_STRING="--no-cache"
+          if ${{ github.event.inputs.use_cache }}; then
+            NO_CACHE_STRING=""
+          fi
+          /usr/local/wujiaying/repos/egeek/build.sh -branch_name ${{ github.event.inputs.branch_name }} -projects ${{ github.event.inputs.projects }} ${{ NO_CACHE_STRING }}
