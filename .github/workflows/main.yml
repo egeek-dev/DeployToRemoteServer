@@ -30,8 +30,8 @@ jobs:
         script: |
           cd /
           chmod +x /usr/local/wujiaying/repos/egeek/build.sh
-          NO_CACHE_STRING="--no-cache"
-          if ${{ github.event.inputs.use_cache }}; then
-            NO_CACHE_STRING=""
+          NO_CACHE_STRING=""
+          if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
+            NO_CACHE_STRING="--no-cache"
           fi
-          /usr/local/wujiaying/repos/egeek/build.sh -branch_name ${{ github.event.inputs.branch_name }} -projects ${{ github.event.inputs.projects }} ${{ NO_CACHE_STRING }}
+          /usr/local/wujiaying/repos/egeek/build.sh -branch_name ${{ github.event.inputs.branch_name }} -projects ${{ github.event.inputs.projects }} $NO_CACHE_STRING
