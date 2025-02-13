@@ -10,7 +10,7 @@ on:
       projects:
         description: '需要构建的服务名称（如 www），以逗号分隔，需注意项目间依赖关系；不填则构建所有服务'
         required: false
-        default: 'proxy,www,template-mobile,template-server'
+        default: 'proxy,build-info,www,template-mobile,template-server'
       use_cache:
         description: '是否使用镜像缓存构建'
         required: true
