@@ -31,8 +31,8 @@ jobs:
           cd /
           chmod +x /usr/local/wujiaying/repos/egeek/build-git-pull.sh
           /usr/local/wujiaying/repos/egeek/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
-          chmod +x /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
-          /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
+          # chmod +x /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
+          # /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
           chmod +x /usr/local/wujiaying/repos/egeek/build.sh
           NO_CACHE_STRING=""
           if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
