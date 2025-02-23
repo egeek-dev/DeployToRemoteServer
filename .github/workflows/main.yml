@@ -27,6 +27,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        command_timeout: "60m"
         script: |
           cd /
           chmod +x /usr/local/wujiaying/repos/egeek/build-git-pull.sh
