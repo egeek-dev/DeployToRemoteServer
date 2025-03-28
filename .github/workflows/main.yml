@@ -51,38 +51,32 @@ jobs:
           # chmod +x /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
           # /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
           chmod +x /usr/local/wujiaying/repos/egeek/build.sh
+          
           NO_CACHE_STRING=""
           if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
             NO_CACHE_STRING="--no-cache"
           fi
-          declare -A project_map=(
-              ["www"]="${{ github.event.inputs.build_www }}"
-              ["template-pc"]="${{ github.event.inputs.build_template_pc }}"
-              ["template-mobile"]="${{ github.event.inputs.build_template_mobile }}"
-              ["template-server"]="${{ github.event.inputs.build_template_server }}"
-              ["build-info"]="true"   # 固定构建
-              ["proxy"]="true"   # 固定构建
-          )
+          
           declare -A project_map
           declare -a order_project_array
           add_project() {
               local key=$1
               local value=$2
               # 如果键不存在，则添加到顺序数组中
-              if [[ -z ${text_map[$key]+_} ]]; then
-                  order_array+=("$key")
+              if [[ -z ${project_map[$key]+_} ]]; then
+                  order_project_array+=("$key")
               fi
               # 更新关联数组中的值
-              text_map[$key]=$value
+              project_map[$key]=$value
           }
           
           # 以下为具体构建的项目
-          add_element "www" "${{ github.event.inputs.build_www }}"
-          add_element "template-pc" "${{ github.event.inputs.build_template_pc }}"
-          add_element "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
-          add_element "template-server" "${{ github.event.inputs.build_template_server }}"
-          add_element "build-info" "true"   # 固定构建
-          add_element "proxy" "true"   # 固定构建
+          add_project "www" "${{ github.event.inputs.build_www }}"
+          add_project "template-pc" "${{ github.event.inputs.build_template_pc }}"
+          add_project "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
+          add_project "template-server" "${{ github.event.inputs.build_template_server }}"
+          add_project "build-info" "true"   # 固定构建
+          add_project "proxy" "true"   # 固定构建
           
           projects=""
           for key in "${order_project_array[@]}"; do
@@ -95,4 +89,5 @@ jobs:
                 fi
             fi
           done
+          
           /usr/local/wujiaying/repos/egeek/build.sh -projects $projects $NO_CACHE_STRING
