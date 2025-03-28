@@ -11,13 +11,25 @@ on:
           - dev
           - master
         default: dev  # 设置默认的分支名
-      projects:
-        description: '需要构建的服务名称（如 www），以逗号分隔，需注意项目间依赖关系；不填则构建所有服务'
-        required: false
-        default: ''
+      # proxy 和 build-info 无论如何都会构建，所以这里不需要加
+      build_www:
+        description: '构建：www'
+        type: boolean
+        default: true
+      build_template_pc:
+        description: '构建：template-pc'
+        type: boolean
+        default: true
+      build_template_mobile:
+        description: '构建：template-mobile'
+        type: boolean
+        default: true
+      build_template_server:
+        description: '构建：template-server'
+        type: boolean
+        default: true
       use_cache:
         description: '是否使用镜像缓存构建'
-        required: true
         type: boolean
         default: true
 
@@ -43,4 +55,23 @@ jobs:
           if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
             NO_CACHE_STRING="--no-cache"
           fi
-          /usr/local/wujiaying/repos/egeek/build.sh -projects ${{ github.event.inputs.projects }} $NO_CACHE_STRING
+          declare -A project_map=(
+              ["www"]="${{ github.event.inputs.build_www }}"
+              ["template-pc"]="${{ github.event.inputs.build_template_pc }}"
+              ["template-mobile"]="${{ github.event.inputs.build_template_mobile }}"
+              ["template-server"]="${{ github.event.inputs.build_template_server }}"
+              ["build-info"]="true"   # 固定构建
+              ["proxy"]="true"   # 固定构建
+          )
+          projects=""
+          for key in "${!project_map[@]}"; do
+            if [ "${project_map[$key]}" = "true" ]; then
+                # 如果是第一个元素不加逗号，否则在前面加上逗号
+                if [ -z "$projects" ]; then
+                    projects+="$key"
+                else
+                    projects+=",${key}"
+                fi
+            fi
+          done
+          /usr/local/wujiaying/repos/egeek/build.sh -projects $projects $NO_CACHE_STRING
