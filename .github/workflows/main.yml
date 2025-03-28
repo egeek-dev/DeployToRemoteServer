@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       branch_name:
-        description: '请填写分支名称'
+        description: '请选择构建分支'
         required: true
-        default: 'dev'  # 设置默认的分支名
+        type: choice
+        options:
+          - dev
+          - master
+        default: dev  # 设置默认的分支名
       projects:
         description: '需要构建的服务名称（如 www），以逗号分隔，需注意项目间依赖关系；不填则构建所有服务'
         required: false
