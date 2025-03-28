@@ -63,8 +63,12 @@ jobs:
               ["build-info"]="true"   # 固定构建
               ["proxy"]="true"   # 固定构建
           )
+          # 将键存入一个普通数组并排序
+          keys=("${!project_map[@]}")
+          IFS=$'\n' sorted_keys=($(sort <<<"${keys[*]}"))
+          unset IFS
           projects=""
-          for key in "${!project_map[@]}"; do
+          for key in "${sorted_keys[@]}"; do
             if [ "${project_map[$key]}" = "true" ]; then
                 # 如果是第一个元素不加逗号，否则在前面加上逗号
                 if [ -z "$projects" ]; then
