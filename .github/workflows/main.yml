@@ -75,7 +75,6 @@ jobs:
           add_project "template-pc" "${{ github.event.inputs.build_template_pc }}"
           add_project "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
           add_project "template-server" "${{ github.event.inputs.build_template_server }}"
-          add_project "build-info" "true"   # 固定构建
           add_project "proxy" "true"   # 固定构建
           
           projects=""
