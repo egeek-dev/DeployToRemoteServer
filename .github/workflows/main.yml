@@ -48,7 +48,7 @@ jobs:
     - name: executing remote ssh commands to develop
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.HOST }}
+        host: ${{ github.event.inputs.app_env == 'test' && secrets.HOST || secrets.HOST }} # if-else
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         command_timeout: "60m"
