@@ -3,6 +3,14 @@ name: Deploy to Remote Server
 on:
   workflow_dispatch:
     inputs:
+      app_env:
+        description: '请选择要构建到的项目环境'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+        default: test
       branch_name:
         description: '请选择构建分支'
         required: true
@@ -89,4 +97,4 @@ jobs:
             fi
           done
           
-          /usr/local/wujiaying/repos/egeek/build.sh -projects $projects $NO_CACHE_STRING
+          /usr/local/wujiaying/repos/egeek/build.sh -env ${{ github.event.inputs.app_env }} -projects $projects $NO_CACHE_STRING
