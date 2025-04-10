@@ -3,14 +3,6 @@ name: Deploy to Remote Server
 on:
   workflow_dispatch:
     inputs:
-      app_env:
-        description: '请选择要构建到的项目环境'
-        required: true
-        type: choice
-        options:
-          - test
-          - prod
-        default: test
       branch_name:
         description: '请选择构建分支'
         required: true
@@ -19,6 +11,14 @@ on:
           - dev
           - master
         default: dev  # 设置默认的分支名
+      app_env:
+        description: '请选择要构建到的项目环境'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+        default: test
       # proxy 和 build-info 无论如何都会构建，所以这里不需要加
       build_www:
         description: '构建：www'
