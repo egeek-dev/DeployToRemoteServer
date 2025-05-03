@@ -24,6 +24,10 @@ on:
         description: '构建：www'
         type: boolean
         default: true
+      build_api_gateway:
+        description: '构建：api-gateway'
+        type: boolean
+        default: true
       build_template_pc:
         description: '构建：template-pc'
         type: boolean
@@ -32,8 +36,12 @@ on:
         description: '构建：template-mobile'
         type: boolean
         default: true
-      build_template_server:
-        description: '构建：template-server'
+      build_template_bff:
+        description: '构建：template-bff'
+        type: boolean
+        default: true
+      build_template_api:
+        description: '构建：template-api'
         type: boolean
         default: true
       use_cache:
@@ -80,9 +88,11 @@ jobs:
           
           # 以下为具体构建的项目
           add_project "www" "${{ github.event.inputs.build_www }}"
+          add_project "api-gateway" "${{ github.event.inputs.build_api_gateway }}"
           add_project "template-pc" "${{ github.event.inputs.build_template_pc }}"
           add_project "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
-          add_project "template-server" "${{ github.event.inputs.build_template_server }}"
+          add_project "template-bff" "${{ github.event.inputs.build_template_bff }}"
+          add_project "template-api" "${{ github.event.inputs.build_template_api }}"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
