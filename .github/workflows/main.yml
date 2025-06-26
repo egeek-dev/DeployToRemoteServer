@@ -101,5 +101,6 @@ jobs:
                 fi
             fi
           done
-          
+
+          APP_MYSQL_ROOT_PASSWORD=mysql_root_pass \
           /usr/local/wujiaying/repos/egeek/build.sh -env ${{ github.event.inputs.app_env }} -projects $projects $NO_CACHE_STRING
