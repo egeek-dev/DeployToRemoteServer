@@ -40,6 +40,10 @@ on:
         description: '构建：template-api'
         type: boolean
         default: true
+      build_template_mysql:
+        description: '构建：template-mysql'
+        type: boolean
+        default: true
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -70,16 +74,19 @@ jobs:
           fi
           
           declare -A project_map
+          declare -A project_skip_building_map
           declare -a order_project_array
           add_project() {
               local key=$1
               local value=$2
+              local skip_building=${3:-"false"}
               # 如果键不存在，则添加到顺序数组中
               if [[ -z ${project_map[$key]+_} ]]; then
                   order_project_array+=("$key")
               fi
               # 更新关联数组中的值
               project_map[$key]=$value
+              project_skip_building_map[$key]=$skip_building
           }
           
           # 以下为具体构建的项目
@@ -88,9 +95,11 @@ jobs:
           add_project "template-pc" "${{ github.event.inputs.build_template_pc }}"
           add_project "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
           add_project "template-api" "${{ github.event.inputs.build_template_api }}"
+          add_project "template-mysql" "${{ github.event.inputs.build_template_mysql }}" "true"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
+          projects_skip_building=""
           for key in "${order_project_array[@]}"; do
             if [ "${project_map[$key]}" = "true" ]; then
                 # 如果是第一个元素不加逗号，否则在前面加上逗号
@@ -99,8 +108,20 @@ jobs:
                 else
                     projects+=",${key}"
                 fi
+
+                if [ "${project_skip_building_map[$key]}" = "true" ]; then
+                  if [ -z "$projects_skip_building" ]; then
+                    projects_skip_building+="$key"
+                  else
+                    projects_skip_building+=",${key}"
+                  fi
+                if
             fi
           done
 
           APP_MYSQL_ROOT_PASSWORD=mysql_root_pass \
-          /usr/local/wujiaying/repos/egeek/build.sh -env ${{ github.event.inputs.app_env }} -projects $projects $NO_CACHE_STRING
+          /usr/local/wujiaying/repos/egeek/build.sh \
+          -env ${{ github.event.inputs.app_env }} \
+          -projects $projects \
+          -projects-skip-building $projects_skip_building \
+          $NO_CACHE_STRING
