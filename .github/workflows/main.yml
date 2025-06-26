@@ -119,7 +119,8 @@ jobs:
             fi
           done
 
-          APP_MYSQL_ROOT_PASSWORD=mysql_root_pass \
+          APP_TEMPLATE_MYSQL_ROOT_PASSWORD=${{ github.event.inputs.app_env == 'test' && secrets.TEST_TEMPLATE_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_TEMPLATE_MYSQL_ROOT_PASSWORD }} \
+          APP_TEMPLATE_MYSQL_PASSWORD=${{ github.event.inputs.app_env == 'test' && secrets.TEST_TEMPLATE_MYSQL_PASSWORD || secrets.secrets.TEST_TEMPLATE_MYSQL_PASSWORD }} \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           -projects $projects \
