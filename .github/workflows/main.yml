@@ -23,7 +23,7 @@ on:
       builds:
         description: '请输入要构建的项目（逗号分隔）'
         required: true
-        type: String
+        type: string
         default: 'www,api-gateway,template-pc,template-mobile,template-api,template-mysql,turntable-api,turntable-mysql'
       use_cache:
         description: '是否使用镜像缓存构建'
