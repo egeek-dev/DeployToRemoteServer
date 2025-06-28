@@ -74,7 +74,8 @@ jobs:
           check_project_existence() {
               # 检查 build_projects 是否为空字符串
               if [ -z $build_projects ]; then
-                  return "false"
+                  echo "false"
+                  return 1 # 如果项目名为空，返回失败状态码
               fi
               
               # 将第一个参数（项目列表）转换为数组
@@ -83,22 +84,24 @@ jobs:
               # 遍历数组检查是否存在指定的项目
               for project in "${projects[@]}"; do
                   if [[ "$project" == "$1" ]]; then
-                      return "true"
+                      echo "true"
+                      return 0 # 如果找到匹配项，返回成功状态码
                   fi
               done
-              
-              return "false"
+
+              echo "false"
+              return 1 # 如果没有找到匹配项，返回失败状态码
           }
           
           # 以下为具体构建的项目
-          add_project "www" "$(check_project_existence "www")"
-          add_project "api-gateway" "$(check_project_existence "api-gateway")"
-          add_project "template-pc" "$(check_project_existence "template-pc")"
-          add_project "template-mobile" "$(check_project_existence "template-mobile")"
-          add_project "template-api" "$(check_project_existence "template-api")"
-          add_project "template-mysql" "$(check_project_existence "template-mysql")" "true"
-          add_project "turntable-api" "$(check_project_existence "turntable-api")"
-          add_project "turntable-mysql" "$(check_project_existence "turntable-mysql")" "true"
+          add_project "www" $(check_project_existence "www")
+          add_project "api-gateway" $(check_project_existence "api-gateway")
+          add_project "template-pc" $(check_project_existence "template-pc")
+          add_project "template-mobile" $(check_project_existence "template-mobile")
+          add_project "template-api" $(check_project_existence "template-api")
+          add_project "template-mysql" $(check_project_existence "template-mysql") "true"
+          add_project "turntable-api" $(check_project_existence "turntable-api")
+          add_project "turntable-mysql" $(check_project_existence "turntable-mysql") "true"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
