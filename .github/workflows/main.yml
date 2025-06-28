@@ -44,6 +44,14 @@ on:
         description: '构建：template-mysql'
         type: boolean
         default: true
+      build_turntable_api:
+        description: '构建：turntable-api'
+        type: boolean
+        default: true
+      build_turntable_mysql:
+        description: '构建：turntable-mysql'
+        type: boolean
+        default: true
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -96,6 +104,8 @@ jobs:
           add_project "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
           add_project "template-api" "${{ github.event.inputs.build_template_api }}"
           add_project "template-mysql" "${{ github.event.inputs.build_template_mysql }}" "true"
+          add_project "turntable-api" "${{ github.event.inputs.build_template_api }}"
+          add_project "turntable-mysql" "${{ github.event.inputs.build_template_mysql }}" "true"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
@@ -121,6 +131,8 @@ jobs:
 
           APP_TEMPLATE_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TEMPLATE_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_TEMPLATE_MYSQL_ROOT_PASSWORD }}" \
           APP_TEMPLATE_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TEMPLATE_MYSQL_PASSWORD || secrets.secrets.TEST_TEMPLATE_MYSQL_PASSWORD }}" \
+          APP_TURNTABLE_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TURNTABLE_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_TURNTABLE_MYSQL_ROOT_PASSWORD }}" \
+          APP_TURNTABLE_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TURNTABLE_MYSQL_PASSWORD || secrets.secrets.TEST_TURNTABLE_MYSQL_PASSWORD }}" \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           -projects $projects \
