@@ -20,38 +20,11 @@ on:
           - prod
         default: test
       # proxy 和 build-info 无论如何都会构建，所以这里不需要加
-      build_www:
-        description: '构建：www'
-        type: boolean
-        default: true
-      build_api_gateway:
-        description: '构建：api-gateway'
-        type: boolean
-        default: true
-      build_template_pc:
-        description: '构建：template-pc'
-        type: boolean
-        default: true
-      build_template_mobile:
-        description: '构建：template-mobile'
-        type: boolean
-        default: true
-      build_template_api:
-        description: '构建：template-api'
-        type: boolean
-        default: true
-      build_template_mysql:
-        description: '构建：template-mysql'
-        type: boolean
-        default: true
-      build_turntable_api:
-        description: '构建：turntable-api'
-        type: boolean
-        default: true
-      build_turntable_mysql:
-        description: '构建：turntable-mysql'
-        type: boolean
-        default: true
+      builds:
+        description: '请输入要构建的项目（逗号分隔）'
+        required: true
+        type: String
+        default: 'www,api-gateway,template-pc,template-mobile,template-api,template-mysql,turntable-api,turntable-mysql'
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -96,16 +69,36 @@ jobs:
               project_map[$key]=$value
               project_skip_building_map[$key]=$skip_building
           }
+
+          build_projects="${{ github.event.inputs.builds }}"
+          check_project_existence() {
+              # 检查第一个参数是否为空字符串
+              if [ -z "$1" ]; then
+                  return "false"
+              fi
+              
+              # 将第一个参数（项目列表）转换为数组
+              IFS=',' read -r -a build_projects <<< "$1"
+              
+              # 遍历数组检查是否存在指定的项目
+              for project in "${build_projects[@]}"; do
+                  if [[ "$project" == "$2" ]]; then
+                      return "true"
+                  fi
+              done
+              
+              return "false"
+          }
           
           # 以下为具体构建的项目
-          add_project "www" "${{ github.event.inputs.build_www }}"
-          add_project "api-gateway" "${{ github.event.inputs.build_api_gateway }}"
-          add_project "template-pc" "${{ github.event.inputs.build_template_pc }}"
-          add_project "template-mobile" "${{ github.event.inputs.build_template_mobile }}"
-          add_project "template-api" "${{ github.event.inputs.build_template_api }}"
-          add_project "template-mysql" "${{ github.event.inputs.build_template_mysql }}" "true"
-          add_project "turntable-api" "${{ github.event.inputs.build_template_api }}"
-          add_project "turntable-mysql" "${{ github.event.inputs.build_template_mysql }}" "true"
+          add_project "www" "${{ check_project_existence "www" }}"
+          add_project "api-gateway" "${{ check_project_existence "api-gateway" }}"
+          add_project "template-pc" "${{ check_project_existence "template-pc" }}"
+          add_project "template-mobile" "${{ check_project_existence "template-mobile" }}"
+          add_project "template-api" "${{ check_project_existence "template-api" }}"
+          add_project "template-mysql" "${{ check_project_existence "template-mysql" }}" "true"
+          add_project "turntable-api" "${{ check_project_existence "turntable-api" }}"
+          add_project "turntable-mysql" "${{ check_project_existence "turntable-mysql" }}" "true"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
