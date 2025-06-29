@@ -24,7 +24,7 @@ on:
         description: '请输入要构建的项目（逗号分隔）'
         required: true
         type: string
-        default: 'www,api-gateway,template-pc,template-mobile,template-api,template-mysql,turntable-api,turntable-mysql'
+        default: 'www,api-gateway,mysql,template-pc,template-mobile,template-api,turntable-api'
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -96,12 +96,11 @@ jobs:
           # 以下为具体构建的项目
           add_project "www" $(check_project_existence "www")
           add_project "api-gateway" $(check_project_existence "api-gateway")
+          add_project "mysql" $(check_project_existence "mysql") "true"
           add_project "template-pc" $(check_project_existence "template-pc")
           add_project "template-mobile" $(check_project_existence "template-mobile")
           add_project "template-api" $(check_project_existence "template-api")
-          add_project "template-mysql" $(check_project_existence "template-mysql") "true"
           add_project "turntable-api" $(check_project_existence "turntable-api")
-          add_project "turntable-mysql" $(check_project_existence "turntable-mysql") "true"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
@@ -125,10 +124,8 @@ jobs:
             fi
           done
 
-          APP_TEMPLATE_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TEMPLATE_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_TEMPLATE_MYSQL_ROOT_PASSWORD }}" \
-          APP_TEMPLATE_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TEMPLATE_MYSQL_PASSWORD || secrets.secrets.TEST_TEMPLATE_MYSQL_PASSWORD }}" \
-          APP_TURNTABLE_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TURNTABLE_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_TURNTABLE_MYSQL_ROOT_PASSWORD }}" \
-          APP_TURNTABLE_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_TURNTABLE_MYSQL_PASSWORD || secrets.secrets.TEST_TURNTABLE_MYSQL_PASSWORD }}" \
+          APP_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_MYSQL_ROOT_PASSWORD }}" \
+          APP_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_MYSQL_PASSWORD || secrets.secrets.TEST_MYSQL_PASSWORD }}" \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           -projects $projects \
