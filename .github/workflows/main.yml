@@ -96,7 +96,7 @@ jobs:
           # 以下为具体构建的项目
           add_project "www" $(check_project_existence "www")
           add_project "api-gateway" $(check_project_existence "api-gateway")
-          add_project "mysql" $(check_project_existence "mysql") "true"
+          add_project "mysql" $(check_project_existence "mysql")
           add_project "template-pc" $(check_project_existence "template-pc")
           add_project "template-mobile" $(check_project_existence "template-mobile")
           add_project "template-api" $(check_project_existence "template-api")
