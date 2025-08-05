@@ -125,6 +125,7 @@ jobs:
             fi
           done
 
+          APP_MAILER_PASSWORD="${{ secrets.secrets.MAILER_PASSWORD }}" \
           APP_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_MYSQL_ROOT_PASSWORD || secrets.secrets.TEST_MYSQL_ROOT_PASSWORD }}" \
           APP_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_MYSQL_PASSWORD || secrets.secrets.TEST_MYSQL_PASSWORD }}" \
           APP_REDIS_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'test' && secrets.TEST_REDIS_ROOT_PASSWORD || secrets.secrets.TEST_REDIS_ROOT_PASSWORD }}" \
