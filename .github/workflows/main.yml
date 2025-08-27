@@ -24,7 +24,7 @@ on:
         description: '请输入要构建的项目（逗号分隔）'
         required: true
         type: string
-        default: 'www,api-gateway,mysql,redis,template-pc,template-mobile,template-api,turntable-api'
+        default: 'www,api-gateway,mysql,redis,template-pc,template-mobile,template-api,template-api-py,turntable-api'
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -101,6 +101,7 @@ jobs:
           add_project "template-pc" $(check_project_existence "template-pc")
           add_project "template-mobile" $(check_project_existence "template-mobile")
           add_project "template-api" $(check_project_existence "template-api")
+          add_project "template-api-py" $(check_project_existence "template-api-py")
           add_project "turntable-api" $(check_project_existence "turntable-api")
           add_project "proxy" "true"   # 固定构建
           
