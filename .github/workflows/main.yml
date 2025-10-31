@@ -37,9 +37,9 @@ jobs:
     - name: executing remote ssh commands to develop
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ github.event.inputs.app_env == 'prod' && secrets.TEST_SSH_HOST || secrets.TEST_SSH_HOST }} # if-else
-        username: ${{ secrets.TEST_SSH_USERNAME }}
-        key: ${{ secrets.TEST_SSH_KEY }}
+        host: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_HOST || secrets.TEST_SSH_HOST }} # if-else
+        username: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_USERNAME || secrets.TEST_SSH_USERNAME }}
+        key: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_KEY || secrets.TEST_SSH_KEY }}
         command_timeout: "60m"
         script: |
           cd /
