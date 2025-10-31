@@ -53,22 +53,6 @@ jobs:
           if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
             NO_CACHE_STRING="--no-cache"
           fi
-          
-          declare -A project_map
-          declare -A project_skip_building_map
-          declare -a order_project_array
-          add_project() {
-              local key=$1
-              local value=$2
-              local skip_building=${3:-"false"}
-              # 如果键不存在，则添加到顺序数组中
-              if [[ -z ${project_map[$key]+_} ]]; then
-                  order_project_array+=("$key")
-              fi
-              # 更新关联数组中的值
-              project_map[$key]=$value
-              project_skip_building_map[$key]=$skip_building
-          }
 
           build_projects="${{ github.event.inputs.builds }}"
           check_project_existence() {
@@ -91,6 +75,31 @@ jobs:
 
               echo "false"
               return 1 # 如果没有找到匹配项，返回失败状态码
+          }
+          
+          declare -A project_map
+          declare -A project_skip_building_map
+          declare -a order_project_array
+          add_project() {
+              local key=$1
+              local value=$2
+              local skip_building="false"
+
+              if [ -z "$value" ]; then
+                  value="$(check_project_existence $key)"
+                  if [ "$value" = "false" ]; then
+                     skip_building="true"
+                  fi
+              fi
+              
+              # 如果键不存在，则添加到顺序数组中
+              if [[ -z ${project_map[$key]+_} ]]; then
+                  order_project_array+=("$key")
+              fi
+              
+              # 更新关联数组中的值
+              project_map[$key]=$value
+              project_skip_building_map[$key]=$skip_building
           }
           
           # 以下为具体构建的项目
