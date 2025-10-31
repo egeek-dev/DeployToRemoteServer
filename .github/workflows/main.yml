@@ -83,7 +83,7 @@ jobs:
           add_project() {
               local key=$1
               local value=$2
-              local skip_building="false"
+              local skip_building="true"
 
               if [ -z "$value" ]; then
                   value="$(check_project_existence $key)"
