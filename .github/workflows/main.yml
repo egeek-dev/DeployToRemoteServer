@@ -82,14 +82,13 @@ jobs:
           declare -a order_project_array
           add_project() {
               local key=$1
+              # 是否部署，默认为在构建列表中检查
               local value=$2
-              local skip_building="true"
+              # 部署时是否跳过构建阶段，默认为否
+              local skip_building=${3:-"false"}
 
               if [ -z "$value" ]; then
                   value="$(check_project_existence $key)"
-                  if [ "$value" = "false" ]; then
-                     skip_building="true"
-                  fi
               fi
               
               # 如果键不存在，则添加到顺序数组中
@@ -135,6 +134,11 @@ jobs:
             fi
           done
 
+          PROJECT_SKIP_BUILDING_STRING=""
+          if [ -n "$projects_skip_building" ]; then
+              PROJECT_SKIP_BUILDING_STRING="-projects-skip-building $projects_skip_building"
+          fi
+
           APP_MAILER_PASSWORD="${{ secrets.MAILER_PASSWORD }}" \
           APP_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_ROOT_PASSWORD || secrets.TEST_MYSQL_ROOT_PASSWORD }}" \
           APP_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_PASSWORD || secrets.TEST_MYSQL_PASSWORD }}" \
@@ -143,5 +147,5 @@ jobs:
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           -projects ${projects} \
-          -projects-skip-building ${projects_skip_building} \
+          ${PROJECT_SKIP_BUILDING_STRING} \
           ${NO_CACHE_STRING}
