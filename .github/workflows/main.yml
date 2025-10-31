@@ -133,6 +133,6 @@ jobs:
           APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
-          -projects $projects \
-          -projects-skip-building $projects_skip_building \
-          $NO_CACHE_STRING
+          -projects ${projects} \
+          -projects-skip-building ${projects_skip_building} \
+          ${NO_CACHE_STRING}
