@@ -39,7 +39,7 @@ jobs:
       with:
         host: ${{ github.event.inputs.app_env == 'prod' && secrets.TEST_SSH_HOST || secrets.TEST_SSH_HOST }} # if-else
         username: ${{ secrets.TEST_SSH_USERNAME }}
-        key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+        key: ${{ secrets.TEST_SSH_KEY }}
         command_timeout: "60m"
         script: |
           cd /
