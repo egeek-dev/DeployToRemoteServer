@@ -103,15 +103,15 @@ jobs:
           }
           
           # 以下为具体构建的项目
-          add_project "www" $(check_project_existence "www")
-          add_project "api-gateway" $(check_project_existence "api-gateway")
-          add_project "mysql" $(check_project_existence "mysql")
-          add_project "redis" $(check_project_existence "redis")
-          add_project "template-pc" $(check_project_existence "template-pc")
-          add_project "template-mobile" $(check_project_existence "template-mobile")
-          add_project "template-api" $(check_project_existence "template-api")
-          add_project "template-api-py" $(check_project_existence "template-api-py")
-          add_project "turntable-api" $(check_project_existence "turntable-api")
+          add_project "www"
+          add_project "api-gateway"
+          add_project "mysql"
+          add_project "redis"
+          add_project "template-pc"
+          add_project "template-mobile"
+          add_project "template-api"
+          add_project "template-api-py"
+          add_project "turntable-api"
           add_project "proxy" "true"   # 固定构建
           
           projects=""
