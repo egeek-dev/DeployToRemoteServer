@@ -140,6 +140,10 @@ jobs:
           fi
 
           APP_MAILER_PASSWORD="${{ secrets.MAILER_PASSWORD }}" \
+          APP_BDY_ACCESS_KEY="${{ secrets.BDY_ACCESS_KEY }}" \
+          APP_BDY_SECRET_KEY="${{ secrets.BDY_SECRET_KEY }}" \
+          APP_JDY_ACCESS_KEY="${{ secrets.JDY_ACCESS_KEY }}" \
+          APP_JDY_SECRET_KEY="${{ secrets.JDY_SECRET_KEY }}" \
           APP_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_ROOT_PASSWORD || secrets.TEST_MYSQL_ROOT_PASSWORD }}" \
           APP_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_PASSWORD || secrets.TEST_MYSQL_PASSWORD }}" \
           APP_REDIS_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_ROOT_PASSWORD || secrets.TEST_REDIS_ROOT_PASSWORD }}" \
