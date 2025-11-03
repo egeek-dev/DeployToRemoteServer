@@ -19,12 +19,6 @@ on:
           - test
           - prod
         default: test
-      # proxy 和 build-info 无论如何都会构建，所以这里不需要加
-      builds:
-        description: '请输入要构建的项目（逗号分隔）'
-        required: true
-        type: string
-        default: 'www,www-portal,api-gateway,mysql,redis,template-pc,template-mobile,template-api,template-api-py,turntable-api'
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -54,92 +48,6 @@ jobs:
             NO_CACHE_STRING="--no-cache"
           fi
 
-          build_projects="${{ github.event.inputs.builds }}"
-          check_project_existence() {
-              # 检查 build_projects 是否为空字符串
-              if [ -z $build_projects ]; then
-                  echo "false"
-                  return 1 # 如果项目名为空，返回失败状态码
-              fi
-              
-              # 将第一个参数（项目列表）转换为数组
-              IFS=',' read -r -a projects <<< $build_projects
-              
-              # 遍历数组检查是否存在指定的项目
-              for project in "${projects[@]}"; do
-                  if [[ "$project" == "$1" ]]; then
-                      echo "true"
-                      return 0 # 如果找到匹配项，返回成功状态码
-                  fi
-              done
-
-              echo "false"
-              return 1 # 如果没有找到匹配项，返回失败状态码
-          }
-          
-          declare -A project_map
-          declare -A project_skip_building_map
-          declare -a order_project_array
-          add_project() {
-              local key=$1
-              # 是否部署，默认为在构建列表中检查
-              local value=$2
-              # 部署时是否跳过构建阶段，默认为否
-              local skip_building=${3:-"false"}
-
-              if [ -z "$value" ]; then
-                  value="$(check_project_existence $key)"
-              fi
-              
-              # 如果键不存在，则添加到顺序数组中
-              if [[ -z ${project_map[$key]+_} ]]; then
-                  order_project_array+=("$key")
-              fi
-              
-              # 更新关联数组中的值
-              project_map[$key]=$value
-              project_skip_building_map[$key]=$skip_building
-          }
-          
-          # 以下为具体构建的项目
-          add_project "www"
-          add_project "www-portal"
-          add_project "api-gateway"
-          add_project "mysql"
-          add_project "redis"
-          add_project "template-pc"
-          add_project "template-mobile"
-          add_project "template-api"
-          add_project "template-api-py"
-          add_project "turntable-api"
-          add_project "proxy" "true"   # 固定构建
-          
-          projects=""
-          projects_skip_building=""
-          for key in "${order_project_array[@]}"; do
-            if [ "${project_map[$key]}" = "true" ]; then
-                # 如果是第一个元素不加逗号，否则在前面加上逗号
-                if [ -z "$projects" ]; then
-                    projects+="$key"
-                else
-                    projects+=",${key}"
-                fi
-
-                if [ "${project_skip_building_map[$key]}" = "true" ]; then
-                  if [ -z "$projects_skip_building" ]; then
-                    projects_skip_building+="$key"
-                  else
-                    projects_skip_building+=",${key}"
-                  fi
-                fi
-            fi
-          done
-
-          PROJECT_SKIP_BUILDING_STRING=""
-          if [ -n "$projects_skip_building" ]; then
-              PROJECT_SKIP_BUILDING_STRING="-projects-skip-building $projects_skip_building"
-          fi
-
           APP_MAILER_PASSWORD="${{ secrets.MAILER_PASSWORD }}" \
           APP_BDY_ACCESS_KEY="${{ secrets.BDY_ACCESS_KEY }}" \
           APP_BDY_SECRET_KEY="${{ secrets.BDY_SECRET_KEY }}" \
@@ -151,6 +59,4 @@ jobs:
           APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
-          -projects ${projects} \
-          ${PROJECT_SKIP_BUILDING_STRING} \
           ${NO_CACHE_STRING}
