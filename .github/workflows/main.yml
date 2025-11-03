@@ -24,7 +24,7 @@ on:
         description: '请输入要构建的项目（逗号分隔）'
         required: true
         type: string
-        default: 'www,api-gateway,mysql,redis,template-pc,template-mobile,template-api,template-api-py,turntable-api'
+        default: 'www,www-portal,api-gateway,mysql,redis,template-pc,template-mobile,template-api,template-api-py,turntable-api'
       use_cache:
         description: '是否使用镜像缓存构建'
         type: boolean
@@ -103,6 +103,7 @@ jobs:
           
           # 以下为具体构建的项目
           add_project "www"
+          add_project "www-portal"
           add_project "api-gateway"
           add_project "mysql"
           add_project "redis"
