@@ -55,8 +55,10 @@ jobs:
           APP_JDY_SECRET_KEY="${{ secrets.JDY_SECRET_KEY }}" \
           APP_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_ROOT_PASSWORD || secrets.TEST_MYSQL_ROOT_PASSWORD }}" \
           APP_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_PASSWORD || secrets.TEST_MYSQL_PASSWORD }}" \
+          APP_MYSQL_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_PASSWORD || secrets.TEST_MYSQL_PASSWORD }}" \
           APP_REDIS_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_ROOT_PASSWORD || secrets.TEST_REDIS_ROOT_PASSWORD }}" \
           APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
+          APP_REDIS_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           ${NO_CACHE_STRING}
