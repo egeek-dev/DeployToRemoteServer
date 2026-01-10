@@ -55,6 +55,7 @@ jobs:
           APP_JDY_SECRET_KEY="${{ secrets.JDY_SECRET_KEY }}" \
           APP_OSS_ACCESS_KEY_ID="${{ secrets.OSS_ACCESS_KEY_ID }}" \
           APP_OSS_ACCESS_KEY_SECRET="${{ secrets.OSS_ACCESS_KEY_SECRET }}" \
+          APP_DEEPSEEK_API_KEY="${{ secrets.DEEPSEEK_API_KEY }}" \
           APP_MYSQL_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_ROOT_PASSWORD || secrets.TEST_MYSQL_ROOT_PASSWORD }}" \
           APP_MYSQL_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_PASSWORD || secrets.TEST_MYSQL_PASSWORD }}" \
           APP_MYSQL_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_MYSQL_PASSWORD || secrets.TEST_MYSQL_PASSWORD }}" \
