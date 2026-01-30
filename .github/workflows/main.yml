@@ -10,7 +10,7 @@ on:
         options:
           - dev
           - master
-        default: dev  # 设置默认的分支名
+        default: dev
       app_env:
         description: '请选择要构建到的项目环境'
         required: true
@@ -19,10 +19,15 @@ on:
           - test
           - prod
         default: test
-      use_cache:
-        description: '是否使用镜像缓存构建'
-        type: boolean
-        default: true
+      cache_strategy:
+        description: '构建缓存策略'
+        required: true
+        type: choice
+        options:
+          - "⚡ 使用缓存构建 (use_cache)"
+          - "🛠️ 清除业务缓存 (no_cache)"
+          - "🧨 彻底全量构建 (full_reset)"
+        default: "⚡ 使用缓存构建 (use_cache)"
 
 jobs:
   deploy:
@@ -31,7 +36,7 @@ jobs:
     - name: executing remote ssh commands to develop
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_HOST || secrets.TEST_SSH_HOST }} # if-else
+        host: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_HOST || secrets.TEST_SSH_HOST }}
         username: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_USERNAME || secrets.TEST_SSH_USERNAME }}
         key: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_KEY || secrets.TEST_SSH_KEY }}
         command_timeout: "60m"
@@ -39,14 +44,26 @@ jobs:
           cd /
           chmod +x /usr/local/wujiaying/repos/egeek/build-git-pull.sh
           /usr/local/wujiaying/repos/egeek/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
-          # chmod +x /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
-          # /usr/local/wujiaying/repos/egeek/linux/shells/load-docker-images.sh
+          
           chmod +x /usr/local/wujiaying/repos/egeek/build.sh
           
-          NO_CACHE_STRING=""
-          if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
-            NO_CACHE_STRING="--no-cache"
-          fi
+          # --- 缓存参数解析逻辑 ---
+          RAW_STR="${{ github.event.inputs.cache_strategy }}"
+          # 使用 grep 提取括号内的值 (use_cache / no_cache / full_reset)
+          CACHE_VALUE=$(echo $RAW_STR | grep -oP '\(\K[^\)]+')
+          
+          CACHE_PARAMS=""
+          case "$CACHE_VALUE" in
+            "no_cache")
+              CACHE_PARAMS="--no-cache"
+              ;;
+            "full_reset")
+              CACHE_PARAMS="--no-cache --full-reset"
+              ;;
+            *)
+              CACHE_PARAMS="" # 默认为 use_cache
+              ;;
+          esac
 
           APP_MAILER_PASSWORD="${{ secrets.MAILER_PASSWORD }}" \
           APP_BDY_ACCESS_KEY="${{ secrets.BDY_ACCESS_KEY }}" \
@@ -66,4 +83,4 @@ jobs:
           APP_REDIS_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           /usr/local/wujiaying/repos/egeek/build.sh \
           -env ${{ github.event.inputs.app_env }} \
-          ${NO_CACHE_STRING}
+          ${CACHE_PARAMS}
