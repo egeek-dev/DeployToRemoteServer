@@ -32,6 +32,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # 定义路径变量
+    env:
+      REPO_PATH: "/usr/local/wujiaying/repo"
+      
     steps:
     - name: executing remote ssh commands to develop
       uses: appleboy/ssh-action@master
@@ -42,10 +46,10 @@ jobs:
         command_timeout: "60m"
         script: |
           cd /
-          chmod +x /usr/local/wujiaying/repos/egeek/build-git-pull.sh
-          /usr/local/wujiaying/repos/egeek/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
+          chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
+          ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
           
-          chmod +x /usr/local/wujiaying/repos/egeek/build.sh
+          chmod +x ${{ env.REPO_PATH }}/build.sh
           
           # --- 缓存参数解析逻辑 ---
           RAW_STR="${{ github.event.inputs.cache_strategy }}"
@@ -81,6 +85,6 @@ jobs:
           APP_REDIS_ROOT_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_ROOT_PASSWORD || secrets.TEST_REDIS_ROOT_PASSWORD }}" \
           APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           APP_REDIS_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
-          /usr/local/wujiaying/repos/egeek/build.sh \
+          ${{ env.REPO_PATH }}/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           ${CACHE_PARAMS}
