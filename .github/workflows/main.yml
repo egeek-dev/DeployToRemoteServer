@@ -43,6 +43,7 @@ jobs:
         host: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_HOST || secrets.TEST_SSH_HOST }}
         username: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_USERNAME || secrets.TEST_SSH_USERNAME }}
         key: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_KEY || secrets.TEST_SSH_KEY }}
+        port: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_PORT || secrets.TEST_SSH_PORT || 22 }}
         command_timeout: "60m"
         script: |
           cd /
