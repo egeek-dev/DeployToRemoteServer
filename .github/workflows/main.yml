@@ -80,8 +80,8 @@ jobs:
           APP_DEEPSEEK_API_SECRET_KEY="${{ secrets.DEEPSEEK_API_SECRET_KEY }}" \
           APP_SILICONFLOW_API_SECRET_KEY="${{ secrets.SILICONFLOW_API_SECRET_KEY }}" \
           APP_PYTHON_API_SECRET_KEY="${{ secrets.PYTHON_API_SECRET_KEY }}" \
-          APP_PG_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PG_PASSWORD || secrets.TEST_PG_PASSWORD }}" \
-          APP_PG_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PG_PASSWORD || secrets.TEST_PG_PASSWORD }}" \
+          APP_PGSQL_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PGSQL_PASSWORD || secrets.TEST_PGSQL_PASSWORD }}" \
+          APP_PGSQL_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PGSQL_PASSWORD || secrets.TEST_PGSQL_PASSWORD }}" \
           APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           APP_REDIS_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           ${{ env.REPO_PATH }}/build.sh \
