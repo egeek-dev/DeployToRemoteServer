@@ -84,6 +84,7 @@ jobs:
           APP_PGSQL_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PGSQL_PASSWORD || secrets.TEST_PGSQL_PASSWORD }}" \
           APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
           APP_REDIS_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
+          APP_JWT_SECRET_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_JWT_SECRET || secrets.TEST_JWT_SECRET }}" \
           ${{ env.REPO_PATH }}/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           ${CACHE_PARAMS}
