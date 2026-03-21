@@ -32,18 +32,17 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # 定义路径变量
+    environment: ${{ github.event.inputs.app_env }}
     env:
       REPO_PATH: "/usr/local/wujiaying/repo"
-      
     steps:
     - name: executing remote ssh commands to develop
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_HOST || secrets.TEST_SSH_HOST }}
-        username: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_USERNAME || secrets.TEST_SSH_USERNAME }}
-        key: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_KEY || secrets.TEST_SSH_KEY }}
-        port: ${{ github.event.inputs.app_env == 'prod' && secrets.PROD_SSH_PORT || secrets.TEST_SSH_PORT || 22 }}
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.SSH_PORT || 22 }}
         command_timeout: "60m"
         script: |
           cd /
@@ -70,22 +69,7 @@ jobs:
               ;;
           esac
 
-          APP_MAILER_PASSWORD="${{ secrets.MAILER_PASSWORD }}" \
-          APP_BDY_ACCESS_KEY="${{ secrets.BDY_ACCESS_KEY }}" \
-          APP_BDY_SECRET_KEY="${{ secrets.BDY_SECRET_KEY }}" \
-          APP_JDY_ACCESS_KEY="${{ secrets.JDY_ACCESS_KEY }}" \
-          APP_JDY_SECRET_KEY="${{ secrets.JDY_SECRET_KEY }}" \
-          APP_OSS_ACCESS_KEY_ID="${{ secrets.OSS_ACCESS_KEY_ID }}" \
-          APP_OSS_ACCESS_KEY_SECRET="${{ secrets.OSS_ACCESS_KEY_SECRET }}" \
-          APP_DEEPSEEK_API_SECRET_KEY="${{ secrets.DEEPSEEK_API_SECRET_KEY }}" \
-          APP_SILICONFLOW_API_SECRET_KEY="${{ secrets.SILICONFLOW_API_SECRET_KEY }}" \
-          APP_PYTHON_API_SECRET_KEY="${{ secrets.PYTHON_API_SECRET_KEY }}" \
-          APP_PGSQL_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PGSQL_PASSWORD || secrets.TEST_PGSQL_PASSWORD }}" \
-          APP_PGSQL_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_PGSQL_PASSWORD || secrets.TEST_PGSQL_PASSWORD }}" \
-          APP_REDIS_PASSWORD="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
-          APP_REDIS_PASSWORD_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_REDIS_PASSWORD || secrets.TEST_REDIS_PASSWORD }}" \
-          APP_JWT_SECRET_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_JWT_SECRET || secrets.TEST_JWT_SECRET }}" \
-          APP_JWT_REFRESH_SECRET_${{ github.event.inputs.app_env }}="${{ github.event.inputs.app_env == 'prod' && secrets.PROD_JWT_REFRESH_SECRET || secrets.TEST_JWT_REFRESH_SECRET }}" \
+          ENV_JSON="${{ secrets.ENV_JSON }}" \
           ${{ env.REPO_PATH }}/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           ${CACHE_PARAMS}
