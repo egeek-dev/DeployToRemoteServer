@@ -35,6 +35,7 @@ jobs:
     environment: ${{ github.event.inputs.app_env }}
     env:
       REPO_PATH: "/usr/local/wujiaying/repo"
+      ENV_JSON: ${{ secrets.ENV_JSON }}
     steps:
     - name: executing remote ssh commands to develop
       uses: appleboy/ssh-action@master
@@ -44,6 +45,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         port: ${{ secrets.SSH_PORT || 22 }}
         command_timeout: "60m"
+        envs: ENV_JSON
         script: |
           cd /
           chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
@@ -68,8 +70,7 @@ jobs:
               CACHE_PARAMS="" # 默认为 use_cache
               ;;
           esac
-
-          ENV_JSON="${{ secrets.ENV_JSON }}" \
+          
           ${{ env.REPO_PATH }}/build.sh \
           -env ${{ github.event.inputs.app_env }} \
           ${CACHE_PARAMS}
