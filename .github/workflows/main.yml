@@ -1,0 +1,111 @@
+name: Deploy to Remote Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: '请选择构建分支'
+        required: true
+        type: choice
+        options:
+          - dev
+          - master
+        default: dev
+      deploy_test:
+        description: '是否部署到测试环境 (test)'
+        required: true
+        type: boolean
+        default: true
+      deploy_prod:
+        description: '是否部署到生产环境 (prod)'
+        required: true
+        type: boolean
+        default: false
+      cache_strategy:
+        description: '构建缓存策略'
+        required: true
+        type: choice
+        options:
+          - '⚡ 使用缓存构建 (use_cache)'
+          - '🛠️ 清除业务缓存 (no_cache)'
+          - '🧨 彻底全量构建 (full_reset)'
+        default: '⚡ 使用缓存构建 (use_cache)'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      app_envs: ${{ steps.resolve_envs.outputs.app_envs }}
+    steps:
+      - name: resolve deploy environments
+        id: resolve_envs
+        shell: bash
+        run: |
+          envs=()
+
+          if [ "${{ github.event.inputs.deploy_test }}" = "true" ]; then
+            envs+=("\"test\"")
+          fi
+
+          if [ "${{ github.event.inputs.deploy_prod }}" = "true" ]; then
+            envs+=("\"prod\"")
+          fi
+
+          if [ ${#envs[@]} -eq 0 ]; then
+            echo "请至少选择一个部署环境（test 或 prod）"
+            exit 1
+          fi
+
+          app_envs="[$(IFS=,; echo "${envs[*]}")]"
+          echo "app_envs=${app_envs}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app_env: ${{ fromJson(needs.prepare.outputs.app_envs) }}
+    environment: ${{ matrix.app_env }}
+    env:
+      REPO_PATH: '/usr/local/egeek/repo'
+      ENV_JSON: ${{ secrets.ENV_JSON }}
+      PROXIES_JSON: ${{ secrets.PROXIES_JSON }}
+    steps:
+      - name: executing remote ssh commands to develop
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: '60m'
+          envs: ENV_JSON,PROXIES_JSON
+          script: |
+            cd /
+            chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
+            ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
+
+            chmod +x ${{ env.REPO_PATH }}/build.sh
+
+            # --- 缓存参数解析逻辑 ---
+            RAW_STR="${{ github.event.inputs.cache_strategy }}"
+            # 使用 grep 提取括号内的值 (use_cache / no_cache / full_reset)
+            CACHE_VALUE=$(echo $RAW_STR | grep -oP '\(\K[^\)]+')
+
+            CACHE_PARAMS=""
+            case "$CACHE_VALUE" in
+              "no_cache")
+                CACHE_PARAMS="--no-cache"
+                ;;
+              "full_reset")
+                CACHE_PARAMS="--no-cache --full-reset"
+                ;;
+              *)
+                CACHE_PARAMS="" # 默认为 use_cache
+                ;;
+            esac
+
+            ${{ env.REPO_PATH }}/build.sh \
+            -env ${{ matrix.app_env }} \
+            ${CACHE_PARAMS}
