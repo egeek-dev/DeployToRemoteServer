@@ -113,16 +113,23 @@ jobs:
               chmod +x ${{ env.REPO_PATH }}/build-frp.sh
 
               FRP_PARAM=""
+              FRP_EXTRA_PARAM=""
               if [ "${{ matrix.app_env }}" = "prod" ]; then
                 FRP_PARAM="--frps"
               elif [ "${{ matrix.app_env }}" = "test" ]; then
                 FRP_PARAM="--frpc"
+                FRP_EXTRA_PARAM="--detach-up"
               else
                 echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.app_env }}"
                 exit 0
               fi
 
-              ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM}
+              if [ "$FRP_EXTRA_PARAM" = "--detach-up" ]; then
+                echo "ℹ️  当前为异步启动模式（--detach-up）：CI 仅保证构建与任务投递成功。"
+                echo "ℹ️  最终结果请以容器运行状态为准。"
+              fi
+
+              ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM} ${FRP_EXTRA_PARAM}
               exit 0
             fi
 
