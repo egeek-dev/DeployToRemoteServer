@@ -21,6 +21,14 @@ on:
         required: true
         type: boolean
         default: false
+      deploy_target:
+        description: '部署目标'
+        required: true
+        type: choice
+        options:
+          - artifacts
+          - frp
+        default: artifacts
       cache_strategy:
         description: '构建缓存策略'
         required: true
@@ -85,6 +93,25 @@ jobs:
             cd /
             chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
             ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
+
+            DEPLOY_TARGET="${{ github.event.inputs.deploy_target }}"
+
+            if [ "$DEPLOY_TARGET" = "frp" ]; then
+              chmod +x ${{ env.REPO_PATH }}/build-frp.sh
+
+              FRP_PARAM=""
+              if [ "${{ matrix.app_env }}" = "prod" ]; then
+                FRP_PARAM="--frps"
+              elif [ "${{ matrix.app_env }}" = "test" ]; then
+                FRP_PARAM="--frpc"
+              else
+                echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.app_env }}"
+                exit 0
+              fi
+
+              ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM}
+              exit 0
+            fi
 
             chmod +x ${{ env.REPO_PATH }}/build.sh
 
