@@ -28,7 +28,7 @@ on:
         options:
           - '📦 部署业务 (artifacts)'
           - '🌐 部署 FRP (frp)'
-          - '📥 仅拉取分支 (pull_only)'
+          - '📥 仅拉取分支、准备环境 (pull_prepare)'
         default: '📦 部署业务 (artifacts)'
       cache_strategy:
         description: '构建缓存策略'
@@ -101,8 +101,11 @@ jobs:
               DEPLOY_TARGET="$RAW_DEPLOY_TARGET"
             fi
 
-            if [ "$DEPLOY_TARGET" = "pull_only" ]; then
-              echo "✅ 分支拉取完成，跳过部署步骤"
+            chmod +x ${{ env.REPO_PATH }}/build-prepare-env.sh
+            ${{ env.REPO_PATH }}/build-prepare-env.sh -env ${{ matrix.app_env }}
+
+            if [ "$DEPLOY_TARGET" = "pull_prepare" ]; then
+              echo "✅ 分支拉取与环境准备完成，跳过部署步骤"
               exit 0
             fi
 
