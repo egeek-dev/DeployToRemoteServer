@@ -26,9 +26,10 @@ on:
         required: true
         type: choice
         options:
-          - artifacts
-          - frp
-        default: artifacts
+          - '📦 部署业务 (artifacts)'
+          - '🌐 部署 FRP (frp)'
+          - '📥 仅拉取分支 (pull_only)'
+        default: '📦 部署业务 (artifacts)'
       cache_strategy:
         description: '构建缓存策略'
         required: true
@@ -94,7 +95,16 @@ jobs:
             chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
             ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
 
-            DEPLOY_TARGET="${{ github.event.inputs.deploy_target }}"
+            RAW_DEPLOY_TARGET="${{ github.event.inputs.deploy_target }}"
+            DEPLOY_TARGET=$(echo "$RAW_DEPLOY_TARGET" | grep -oP '\(\K[^\)]+' || true)
+            if [ -z "$DEPLOY_TARGET" ]; then
+              DEPLOY_TARGET="$RAW_DEPLOY_TARGET"
+            fi
+
+            if [ "$DEPLOY_TARGET" = "pull_only" ]; then
+              echo "✅ 分支拉取完成，跳过部署步骤"
+              exit 0
+            fi
 
             if [ "$DEPLOY_TARGET" = "frp" ]; then
               chmod +x ${{ env.REPO_PATH }}/build-frp.sh
