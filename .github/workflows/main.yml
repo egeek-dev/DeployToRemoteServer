@@ -125,8 +125,7 @@ jobs:
               fi
 
               if [ "$FRP_EXTRA_PARAM" = "--detach-up" ]; then
-                echo "ℹ️  当前为异步启动模式（--detach-up）：CI 仅保证构建与任务投递成功。"
-                echo "ℹ️  最终结果请以容器运行状态为准。"
+                echo "ℹ️  当前为异步启动模式（--detach-up）：CI 仅保证构建与任务投递成功，最终结果请以容器运行状态为准。"
               fi
 
               ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM} ${FRP_EXTRA_PARAM}
