@@ -12,12 +12,17 @@ on:
           - master
         default: dev
       deploy_test:
-        description: '是否部署到测试环境 (test)'
+        description: '部署到测试环境 (test)'
         required: true
         type: boolean
         default: true
       deploy_prod:
-        description: '是否部署到生产环境 (prod)'
+        description: '部署到生产环境 (prod)'
+        required: true
+        type: boolean
+        default: false
+      deploy_prod_global:
+        description: '部署到海外生产环境 (prod_global)'
         required: true
         type: boolean
         default: false
@@ -44,29 +49,33 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      app_envs: ${{ steps.resolve_envs.outputs.app_envs }}
+      deploy_matrix: ${{ steps.resolve_envs.outputs.deploy_matrix }}
     steps:
       - name: resolve deploy environments
         id: resolve_envs
         shell: bash
         run: |
-          envs=()
+          matrix_items=()
 
           if [ "${{ github.event.inputs.deploy_test }}" = "true" ]; then
-            envs+=("\"test\"")
+            matrix_items+=("{\"deploy_env\":\"test\",\"app_env\":\"test\"}")
           fi
 
           if [ "${{ github.event.inputs.deploy_prod }}" = "true" ]; then
-            envs+=("\"prod\"")
+            matrix_items+=("{\"deploy_env\":\"prod\",\"app_env\":\"prod\"}")
           fi
 
-          if [ ${#envs[@]} -eq 0 ]; then
-            echo "请至少选择一个部署环境（test 或 prod）"
+          if [ "${{ github.event.inputs.deploy_prod_global }}" = "true" ]; then
+            matrix_items+=("{\"deploy_env\":\"prod_global\",\"app_env\":\"prod\"}")
+          fi
+
+          if [ ${#matrix_items[@]} -eq 0 ]; then
+            echo "请至少选择一个部署环境（test、prod 或 prod_global）"
             exit 1
           fi
 
-          app_envs="[$(IFS=,; echo "${envs[*]}")]"
-          echo "app_envs=${app_envs}" >> "$GITHUB_OUTPUT"
+          deploy_matrix="[$(IFS=,; echo "${matrix_items[*]}")]"
+          echo "deploy_matrix=${deploy_matrix}" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: prepare
@@ -74,8 +83,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app_env: ${{ fromJson(needs.prepare.outputs.app_envs) }}
-    environment: ${{ matrix.app_env }}
+        include: ${{ fromJson(needs.prepare.outputs.deploy_matrix) }}
+    environment: ${{ matrix.deploy_env }}
     env:
       REPO_PATH: '/usr/local/egeek/repo'
       ENV_JSON: ${{ secrets.ENV_JSON }}
@@ -87,7 +96,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: ${{ secrets.SSH_PORT }}
           command_timeout: '60m'
           envs: ENV_JSON,PROXIES_JSON
           script: |
@@ -114,13 +123,13 @@ jobs:
 
               FRP_PARAM=""
               FRP_EXTRA_PARAM=""
-              if [ "${{ matrix.app_env }}" = "prod" ]; then
+              if [ "${{ matrix.deploy_env }}" = "prod" ]; then
                 FRP_PARAM="--frps"
-              elif [ "${{ matrix.app_env }}" = "test" ]; then
+              elif [ "${{ matrix.deploy_env }}" = "test" ]; then
                 FRP_PARAM="--frpc"
                 FRP_EXTRA_PARAM="--detach-up"
               else
-                echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.app_env }}"
+                echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.deploy_env }}"
                 exit 0
               fi
 
