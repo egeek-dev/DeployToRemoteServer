@@ -58,15 +58,15 @@ jobs:
           matrix_items=()
 
           if [ "${{ github.event.inputs.deploy_to_cn_test }}" = "true" ]; then
-            matrix_items+=("{\"deploy_to\":\"cn-test\",\"app_env\":\"test\",\"deploy_env\":\"cn\"}")
+            matrix_items+=("{\"environment\":\"test\"}")
           fi
 
           if [ "${{ github.event.inputs.deploy_to_cn_prod }}" = "true" ]; then
-            matrix_items+=("{\"deploy_to\":\"cn-prod\",\"app_env\":\"prod\",\"deploy_env\":\"cn\"}")
+            matrix_items+=("{\"environment\":\"prod\"}")
           fi
 
           if [ "${{ github.event.inputs.deploy_to_global_prod }}" = "true" ]; then
-            matrix_items+=("{\"deploy_to\":\"global-prod\",\"app_env\":\"prod\",\"deploy_env\":\"global\"}")
+            matrix_items+=("{\"environment\":\"prod_global\"}")
           fi
 
           if [ ${#matrix_items[@]} -eq 0 ]; then
@@ -84,7 +84,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.prepare.outputs.deploy_matrix) }}
-    environment: ${{ matrix.deploy_to }}
+    environment: ${{ matrix.environment }}
     env:
       REPO_PATH: '/usr/local/egeek/repo'
       ENV_JSON: ${{ secrets.ENV_JSON }}
@@ -110,8 +110,30 @@ jobs:
               DEPLOY_TARGET="$RAW_DEPLOY_TARGET"
             fi
 
+            case "${{ matrix.environment }}" in
+              "test")
+                DEPLOY_ENV="cn"
+                APP_ENV="test"
+                DEPLOY_TO="cn-test"
+                ;;
+              "prod")
+                DEPLOY_ENV="cn"
+                APP_ENV="prod"
+                DEPLOY_TO="cn-prod"
+                ;;
+              "prod_global")
+                DEPLOY_ENV="global"
+                APP_ENV="prod"
+                DEPLOY_TO="global-prod"
+                ;;
+              *)
+                echo "❌ 未知环境: ${{ matrix.environment }}"
+                exit 1
+                ;;
+            esac
+
             chmod +x ${{ env.REPO_PATH }}/build-prepare-env.sh
-            ${{ env.REPO_PATH }}/build-prepare-env.sh -env ${{ matrix.app_env }}
+            ${{ env.REPO_PATH }}/build-prepare-env.sh -env ${APP_ENV}
 
             if [ "$DEPLOY_TARGET" = "pull_prepare" ]; then
               echo "✅ 分支拉取与环境准备完成，跳过部署步骤"
@@ -123,13 +145,13 @@ jobs:
 
               FRP_PARAM=""
               FRP_EXTRA_PARAM=""
-              if [ "${{ matrix.deploy_to }}" = "cn-prod" ]; then
+              if [ "$DEPLOY_TO" = "cn-prod" ]; then
                 FRP_PARAM="--frps"
-              elif [ "${{ matrix.deploy_to }}" = "cn-test" ]; then
+              elif [ "$DEPLOY_TO" = "cn-test" ]; then
                 FRP_PARAM="--frpc"
                 FRP_EXTRA_PARAM="--detach-up"
               else
-                echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.deploy_to }}"
+                echo "ℹ️  当前环境不执行 frp 部署: $DEPLOY_TO"
                 exit 0
               fi
 
@@ -162,6 +184,6 @@ jobs:
             esac
 
             ${{ env.REPO_PATH }}/build.sh \
-            -deploy-env ${{ matrix.deploy_env }} \
-            -env ${{ matrix.app_env }} \
+            -deploy-env ${DEPLOY_ENV} \
+            -env ${APP_ENV} \
             ${CACHE_PARAMS}
