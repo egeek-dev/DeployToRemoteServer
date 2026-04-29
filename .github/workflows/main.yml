@@ -11,18 +11,18 @@ on:
           - dev
           - master
         default: dev
-      deploy_test:
-        description: '部署到测试环境 (test)'
+      deploy_to_cn_test:
+        description: '部署到测试环境 (cn-test)'
         required: true
         type: boolean
         default: true
-      deploy_prod:
-        description: '部署到生产环境 (prod)'
+      deploy_to_cn_prod:
+        description: '部署到生产环境 (cn-prod)'
         required: true
         type: boolean
         default: false
-      deploy_prod_global:
-        description: '部署到海外生产环境 (prod_global)'
+      deploy_to_global_prod:
+        description: '部署到海外生产环境 (global-prod)'
         required: true
         type: boolean
         default: false
@@ -57,20 +57,20 @@ jobs:
         run: |
           matrix_items=()
 
-          if [ "${{ github.event.inputs.deploy_test }}" = "true" ]; then
-            matrix_items+=("{\"deploy_env\":\"test\",\"app_env\":\"test\"}")
+          if [ "${{ github.event.inputs.deploy_to_cn_test }}" = "true" ]; then
+            matrix_items+=("{\"deploy_to\":\"cn-test\",\"app_env\":\"test\",\"deploy_env\":\"cn\"}")
           fi
 
-          if [ "${{ github.event.inputs.deploy_prod }}" = "true" ]; then
-            matrix_items+=("{\"deploy_env\":\"prod\",\"app_env\":\"prod\"}")
+          if [ "${{ github.event.inputs.deploy_to_cn_prod }}" = "true" ]; then
+            matrix_items+=("{\"deploy_to\":\"cn-prod\",\"app_env\":\"prod\",\"deploy_env\":\"cn\"}")
           fi
 
-          if [ "${{ github.event.inputs.deploy_prod_global }}" = "true" ]; then
-            matrix_items+=("{\"deploy_env\":\"prod_global\",\"app_env\":\"prod\"}")
+          if [ "${{ github.event.inputs.deploy_to_global_prod }}" = "true" ]; then
+            matrix_items+=("{\"deploy_to\":\"global-prod\",\"app_env\":\"prod\",\"deploy_env\":\"global\"}")
           fi
 
           if [ ${#matrix_items[@]} -eq 0 ]; then
-            echo "请至少选择一个部署环境（test、prod 或 prod_global）"
+            echo "请至少选择一个部署环境（cn-test、cn-prod 或 global-prod）"
             exit 1
           fi
 
@@ -84,7 +84,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.prepare.outputs.deploy_matrix) }}
-    environment: ${{ matrix.deploy_env }}
+    environment: ${{ matrix.deploy_to }}
     env:
       REPO_PATH: '/usr/local/egeek/repo'
       ENV_JSON: ${{ secrets.ENV_JSON }}
@@ -123,13 +123,13 @@ jobs:
 
               FRP_PARAM=""
               FRP_EXTRA_PARAM=""
-              if [ "${{ matrix.deploy_env }}" = "prod" ]; then
+              if [ "${{ matrix.deploy_to }}" = "cn-prod" ]; then
                 FRP_PARAM="--frps"
-              elif [ "${{ matrix.deploy_env }}" = "test" ]; then
+              elif [ "${{ matrix.deploy_to }}" = "cn-test" ]; then
                 FRP_PARAM="--frpc"
                 FRP_EXTRA_PARAM="--detach-up"
               else
-                echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.deploy_env }}"
+                echo "ℹ️  当前环境不执行 frp 部署: ${{ matrix.deploy_to }}"
                 exit 0
               fi
 
@@ -162,5 +162,6 @@ jobs:
             esac
 
             ${{ env.REPO_PATH }}/build.sh \
+            -deploy-env ${{ matrix.deploy_env }} \
             -env ${{ matrix.app_env }} \
             ${CACHE_PARAMS}
