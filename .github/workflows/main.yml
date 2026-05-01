@@ -33,7 +33,6 @@ on:
         options:
           - '📦 部署业务 (artifacts)'
           - '🌐 部署 FRP (frp)'
-          - '🔄 仅重启容器 (restart)'
           - '📥 仅拉取分支、准备环境 (pull_prepare)'
         default: '📦 部署业务 (artifacts)'
       cache_strategy:
@@ -157,11 +156,6 @@ jobs:
               fi
 
               ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM} ${FRP_EXTRA_PARAM}
-              exit 0
-            fi
-
-            if [ "$ACTION" = "restart" ]; then
-              docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" restart $(docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" ps --services --filter "status=running")
               exit 0
             fi
 
