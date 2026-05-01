@@ -161,7 +161,7 @@ jobs:
             fi
 
             if [ "$ACTION" = "restart" ]; then
-              docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" restart
+              docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" restart $(docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" ps --services --filter "status=running")
               exit 0
             fi
 
