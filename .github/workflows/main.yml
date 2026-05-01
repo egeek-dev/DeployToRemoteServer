@@ -26,13 +26,14 @@ on:
         required: true
         type: boolean
         default: false
-      deploy_target:
-        description: '部署目标'
+      action:
+        description: '动作'
         required: true
         type: choice
         options:
           - '📦 部署业务 (artifacts)'
           - '🌐 部署 FRP (frp)'
+          - '🔄 仅重启容器 (restart)'
           - '📥 仅拉取分支、准备环境 (pull_prepare)'
         default: '📦 部署业务 (artifacts)'
       cache_strategy:
@@ -104,7 +105,7 @@ jobs:
             chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
             ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
 
-            RAW_DEPLOY_TARGET="${{ github.event.inputs.deploy_target }}"
+            RAW_DEPLOY_TARGET="${{ github.event.inputs.action }}"
             DEPLOY_TARGET=$(echo "$RAW_DEPLOY_TARGET" | grep -oP '\(\K[^\)]+' || true)
             if [ -z "$DEPLOY_TARGET" ]; then
               DEPLOY_TARGET="$RAW_DEPLOY_TARGET"
@@ -156,6 +157,11 @@ jobs:
               fi
 
               ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM} ${FRP_EXTRA_PARAM}
+              exit 0
+            fi
+
+            if [ "$DEPLOY_TARGET" = "restart" ]; then
+              docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" restart
               exit 0
             fi
 
