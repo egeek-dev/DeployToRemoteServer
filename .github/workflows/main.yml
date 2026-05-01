@@ -105,10 +105,10 @@ jobs:
             chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
             ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
 
-            RAW_DEPLOY_TARGET="${{ github.event.inputs.action }}"
-            DEPLOY_TARGET=$(echo "$RAW_DEPLOY_TARGET" | grep -oP '\(\K[^\)]+' || true)
-            if [ -z "$DEPLOY_TARGET" ]; then
-              DEPLOY_TARGET="$RAW_DEPLOY_TARGET"
+            RAW_ACTION="${{ github.event.inputs.action }}"
+            ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
+            if [ -z "$ACTION" ]; then
+              ACTION="$RAW_ACTION"
             fi
 
             case "${{ matrix.environment }}" in
@@ -136,12 +136,12 @@ jobs:
             chmod +x ${{ env.REPO_PATH }}/build-prepare-env.sh
             ${{ env.REPO_PATH }}/build-prepare-env.sh -env ${APP_ENV}
 
-            if [ "$DEPLOY_TARGET" = "pull_prepare" ]; then
+            if [ "$ACTION" = "pull_prepare" ]; then
               echo "✅ 分支拉取与环境准备完成，跳过部署步骤"
               exit 0
             fi
 
-            if [ "$DEPLOY_TARGET" = "frp" ]; then
+            if [ "$ACTION" = "frp" ]; then
               chmod +x ${{ env.REPO_PATH }}/build-frp.sh
 
               FRP_PARAM=""
@@ -160,7 +160,7 @@ jobs:
               exit 0
             fi
 
-            if [ "$DEPLOY_TARGET" = "restart" ]; then
+            if [ "$ACTION" = "restart" ]; then
               docker compose -f "${{ env.REPO_PATH }}/docker-compose.yaml" restart
               exit 0
             fi
