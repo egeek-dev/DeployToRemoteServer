@@ -87,7 +87,7 @@ jobs:
     environment: ${{ matrix.environment }}
     env:
       REPO_PATH: '/usr/local/egeek/repo'
-      ENV_JSON: ${{ secrets.ENV_JSON }}
+      ENC_KEY: ${{ secrets.ENC_KEY }}
       PROXIES_JSON: ${{ secrets.PROXIES_JSON }}
     steps:
       - name: executing remote ssh commands to develop
@@ -98,7 +98,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
           command_timeout: '60m'
-          envs: ENV_JSON,PROXIES_JSON
+          envs: ENC_KEY,PROXIES_JSON
           script: |
             cd /
             chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
@@ -132,12 +132,11 @@ jobs:
                 ;;
             esac
 
-            chmod +x ${{ env.REPO_PATH }}/build-prepare-env.sh
-            ${{ env.REPO_PATH }}/build-prepare-env.sh -env ${APP_ENV}
+            chmod +x ${{ env.REPO_PATH }}/build.sh
+            BUILD_PARAMS="-deploy-env ${DEPLOY_ENV} -env ${APP_ENV}"
 
             if [ "$ACTION" = "pull_prepare" ]; then
-              echo "✅ 分支拉取与环境准备完成，跳过部署步骤"
-              exit 0
+              BUILD_PARAMS="${BUILD_PARAMS} --prepare-only"
             fi
 
             if [ "$ACTION" = "frp" ]; then
@@ -159,8 +158,6 @@ jobs:
               exit 0
             fi
 
-            chmod +x ${{ env.REPO_PATH }}/build.sh
-
             # --- 缓存参数解析逻辑 ---
             RAW_STR="${{ github.event.inputs.cache_strategy }}"
             # 使用 grep 提取括号内的值 (use_cache / no_cache / full_reset)
@@ -169,17 +166,14 @@ jobs:
             CACHE_PARAMS=""
             case "$CACHE_VALUE" in
               "no_cache")
-                CACHE_PARAMS="--no-cache"
+                BUILD_PARAMS="${BUILD_PARAMS} --no-cache"
                 ;;
               "full_reset")
-                CACHE_PARAMS="--no-cache --full-reset"
+                BUILD_PARAMS="${BUILD_PARAMS} --no-cache --full-reset"
                 ;;
               *)
-                CACHE_PARAMS="" # 默认为 use_cache
+                # 默认为 use_cache
                 ;;
             esac
 
-            ${{ env.REPO_PATH }}/build.sh \
-            -deploy-env ${DEPLOY_ENV} \
-            -env ${APP_ENV} \
-            ${CACHE_PARAMS}
+            ${{ env.REPO_PATH }}/build.sh ${BUILD_PARAMS}
