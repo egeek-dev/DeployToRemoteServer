@@ -118,7 +118,8 @@ jobs:
 
           # 使用 HTTPS 从 Gitee 拉取镜像，避免 SSH 22 端口连通性问题。
           rm -rf /tmp/egeek-international.git
-          git clone --mirror "https://${GITEE_USERNAME}:${GITEE_TOKEN}@gitee.com/egeek-dev/egeek-international.git" /tmp/egeek-international.git
+          GITEE_BASIC_AUTH=$(printf '%s' "${GITEE_USERNAME}:${GITEE_TOKEN}" | base64 | tr -d '\n')
+          git -c "http.https://gitee.com/.extraheader=Authorization: Basic ${GITEE_BASIC_AUTH}" clone --mirror https://gitee.com/egeek-dev/egeek-international.git /tmp/egeek-international.git
           cd /tmp/egeek-international.git
           git remote add github git@github.com:egeek-dev/egeek-international.git
           GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --force --prune github "refs/heads/*:refs/heads/*" "refs/tags/*:refs/tags/*"
