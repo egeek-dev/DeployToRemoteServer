@@ -94,6 +94,7 @@ jobs:
   sync_to_github:
     needs: prepare
     runs-on: ubuntu-latest
+    environment: prod_global
     permissions:
       contents: write
     steps:
