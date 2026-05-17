@@ -33,6 +33,7 @@ on:
         options:
           - '📦 部署业务 (artifacts)'
           - '🌐 部署 FRP (frp)'
+          - '🔄 仅同步镜像到 github (sync_github)'
           - '📥 仅拉取分支、准备环境 (pull_prepare)'
         default: '📦 部署业务 (artifacts)'
       cache_strategy:
@@ -58,6 +59,11 @@ jobs:
         run: |
           matrix_items=()
           should_sync_github=false
+          RAW_ACTION="${{ github.event.inputs.action }}"
+          ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
+          if [ -z "$ACTION" ]; then
+            ACTION="$RAW_ACTION"
+          fi
 
           if [ "${{ github.event.inputs.deploy_to_cn_test }}" = "true" ]; then
             matrix_items+=("{\"environment\":\"test\"}")
@@ -72,7 +78,11 @@ jobs:
             should_sync_github=true
           fi
 
-          if [ ${#matrix_items[@]} -eq 0 ]; then
+          if [ "$ACTION" = "sync_github" ]; then
+            should_sync_github=true
+          fi
+
+          if [ ${#matrix_items[@]} -eq 0 ] && [ "$ACTION" != "sync_github" ]; then
             echo "请至少选择一个部署环境（cn-test、cn-prod 或 global-prod）"
             exit 1
           fi
@@ -91,17 +101,10 @@ jobs:
         if: needs.prepare.outputs.should_sync_github != 'true'
         run: echo "跳过 Gitee -> GitHub 同步"
 
-      - name: checkout github repo
-        if: needs.prepare.outputs.should_sync_github == 'true'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: sync gitee branch to github
+      - name: mirror gitee repo to github
         if: needs.prepare.outputs.should_sync_github == 'true'
         shell: bash
         env:
-          BRANCH_NAME: ${{ github.event.inputs.branch_name }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
@@ -109,20 +112,19 @@ jobs:
           chmod 600 ~/.ssh/gitee_sync_key
 
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          # 配置 Gitee 远程仓库地址，确保后续拉取来源固定为主仓库。
-          git remote add gitee git@gitee.com:egeek-dev/egeek-international.git 2>/dev/null || true
-          git remote set-url gitee git@gitee.com:egeek-dev/egeek-international.git
-
-          # 从 Gitee 拉取本次发版分支到本地远程跟踪引用。
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git fetch gitee "$BRANCH_NAME"
-          # 将 Gitee 分支强制对齐推送到当前 GitHub 仓库同名分支，供海外环境拉取。
-          git push origin "refs/remotes/gitee/$BRANCH_NAME:refs/heads/$BRANCH_NAME" --force
+          # 使用裸仓库镜像方式同步全部分支与 tags，确保 GitHub 始终作为 Gitee 的完整镜像。
+          rm -rf /tmp/egeek-international.git
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git clone --mirror git@gitee.com:egeek-dev/egeek-international.git /tmp/egeek-international.git
+          cd /tmp/egeek-international.git
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --mirror git@github.com:egeek-dev/egeek-international.git
 
   deploy:
     needs:
       - prepare
       - sync_to_github
+    if: github.event.inputs.action != '🔄 仅同步镜像到 github (sync_github)'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
