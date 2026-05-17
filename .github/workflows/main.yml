@@ -50,12 +50,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deploy_matrix: ${{ steps.resolve_envs.outputs.deploy_matrix }}
+      should_sync_github: ${{ steps.resolve_envs.outputs.should_sync_github }}
     steps:
       - name: resolve deploy environments
         id: resolve_envs
         shell: bash
         run: |
           matrix_items=()
+          should_sync_github=false
 
           if [ "${{ github.event.inputs.deploy_to_cn_test }}" = "true" ]; then
             matrix_items+=("{\"environment\":\"test\"}")
@@ -67,6 +69,7 @@ jobs:
 
           if [ "${{ github.event.inputs.deploy_to_global_prod }}" = "true" ]; then
             matrix_items+=("{\"environment\":\"prod_global\"}")
+            should_sync_github=true
           fi
 
           if [ ${#matrix_items[@]} -eq 0 ]; then
@@ -76,9 +79,50 @@ jobs:
 
           deploy_matrix="[$(IFS=,; echo "${matrix_items[*]}")]"
           echo "deploy_matrix=${deploy_matrix}" >> "$GITHUB_OUTPUT"
+          echo "should_sync_github=${should_sync_github}" >> "$GITHUB_OUTPUT"
+
+  sync_to_github:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: skip sync for non-global deploy
+        if: needs.prepare.outputs.should_sync_github != 'true'
+        run: echo "跳过 Gitee -> GitHub 同步"
+
+      - name: checkout github repo
+        if: needs.prepare.outputs.should_sync_github == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: sync gitee branch to github
+        if: needs.prepare.outputs.should_sync_github == 'true'
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ github.event.inputs.branch_name }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/gitee_sync_key
+          chmod 600 ~/.ssh/gitee_sync_key
+
+          ssh-keyscan gitee.com >> ~/.ssh/known_hosts
+
+          # 配置 Gitee 远程仓库地址，确保后续拉取来源固定为主仓库。
+          git remote add gitee git@gitee.com:egeek-dev/egeek-international.git 2>/dev/null || true
+          git remote set-url gitee git@gitee.com:egeek-dev/egeek-international.git
+
+          # 从 Gitee 拉取本次发版分支到本地远程跟踪引用。
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git fetch gitee "$BRANCH_NAME"
+          # 将 Gitee 分支强制对齐推送到当前 GitHub 仓库同名分支，供海外环境拉取。
+          git push origin "refs/remotes/gitee/$BRANCH_NAME:refs/heads/$BRANCH_NAME" --force
 
   deploy:
-    needs: prepare
+    needs:
+      - prepare
+      - sync_to_github
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -101,15 +145,6 @@ jobs:
           envs: ENC_KEY,PROXIES_JSON
           script: |
             cd /
-            chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
-            ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }}
-
-            RAW_ACTION="${{ github.event.inputs.action }}"
-            ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
-            if [ -z "$ACTION" ]; then
-              ACTION="$RAW_ACTION"
-            fi
-
             case "${{ matrix.environment }}" in
               "test")
                 DEPLOY_ENV="cn"
@@ -131,6 +166,15 @@ jobs:
                 exit 1
                 ;;
             esac
+
+            chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
+            ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }} -deploy-env ${DEPLOY_ENV}
+
+            RAW_ACTION="${{ github.event.inputs.action }}"
+            ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
+            if [ -z "$ACTION" ]; then
+              ACTION="$RAW_ACTION"
+            fi
 
             chmod +x ${{ env.REPO_PATH }}/build.sh
             BUILD_PARAMS="-deploy-env ${DEPLOY_ENV} -env ${APP_ENV}"
