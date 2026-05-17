@@ -108,12 +108,22 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.SSH_KEY }}
         run: |
+          set -x
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/gitee_sync_key
           chmod 600 ~/.ssh/gitee_sync_key
 
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
           ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+          echo "--- 检查 SSH 密钥格式 ---"
+          ssh-keygen -lf ~/.ssh/gitee_sync_key
+
+          echo "--- 测试访问 Gitee SSH ---"
+          GIT_SSH_COMMAND="ssh -vvv -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" ssh -T git@gitee.com || true
+
+          echo "--- 测试读取 Gitee 仓库 refs ---"
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git ls-remote git@gitee.com:egeek-dev/egeek-international.git
 
           # 使用裸仓库拉取全部 refs；推送时仅同步 heads/tags，避免 GitHub 拒绝隐藏 refs 导致失败。
           rm -rf /tmp/egeek-international.git
