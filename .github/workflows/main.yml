@@ -115,11 +115,12 @@ jobs:
           ssh-keyscan gitee.com >> ~/.ssh/known_hosts
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          # 使用裸仓库镜像方式同步全部分支与 tags，确保 GitHub 始终作为 Gitee 的完整镜像。
+          # 使用裸仓库拉取全部 refs；推送时仅同步 heads/tags，避免 GitHub 拒绝隐藏 refs 导致失败。
           rm -rf /tmp/egeek-international.git
           GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git clone --mirror git@gitee.com:egeek-dev/egeek-international.git /tmp/egeek-international.git
           cd /tmp/egeek-international.git
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --mirror git@github.com:egeek-dev/egeek-international.git
+          git remote add github git@github.com:egeek-dev/egeek-international.git
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --force --prune github "refs/heads/*:refs/heads/*" "refs/tags/*:refs/tags/*"
 
   deploy:
     needs:
