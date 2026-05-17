@@ -33,7 +33,6 @@ on:
         options:
           - '📦 部署业务 (artifacts)'
           - '🌐 部署 FRP (frp)'
-          - '🔄 仅同步镜像到 github (sync_github)'
           - '📥 仅拉取分支、准备环境 (pull_prepare)'
         default: '📦 部署业务 (artifacts)'
       cache_strategy:
@@ -51,19 +50,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       deploy_matrix: ${{ steps.resolve_envs.outputs.deploy_matrix }}
-      should_sync_github: ${{ steps.resolve_envs.outputs.should_sync_github }}
     steps:
       - name: resolve deploy environments
         id: resolve_envs
         shell: bash
         run: |
           matrix_items=()
-          should_sync_github=false
-          RAW_ACTION="${{ github.event.inputs.action }}"
-          ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
-          if [ -z "$ACTION" ]; then
-            ACTION="$RAW_ACTION"
-          fi
 
           if [ "${{ github.event.inputs.deploy_to_cn_test }}" = "true" ]; then
             matrix_items+=("{\"environment\":\"test\"}")
@@ -75,60 +67,18 @@ jobs:
 
           if [ "${{ github.event.inputs.deploy_to_global_prod }}" = "true" ]; then
             matrix_items+=("{\"environment\":\"prod_global\"}")
-            should_sync_github=true
           fi
 
-          if [ "$ACTION" = "sync_github" ]; then
-            should_sync_github=true
-          fi
-
-          if [ ${#matrix_items[@]} -eq 0 ] && [ "$ACTION" != "sync_github" ]; then
+          if [ ${#matrix_items[@]} -eq 0 ]; then
             echo "请至少选择一个部署环境（cn-test、cn-prod 或 global-prod）"
             exit 1
           fi
 
           deploy_matrix="[$(IFS=,; echo "${matrix_items[*]}")]"
           echo "deploy_matrix=${deploy_matrix}" >> "$GITHUB_OUTPUT"
-          echo "should_sync_github=${should_sync_github}" >> "$GITHUB_OUTPUT"
-
-  sync_to_github:
-    needs: prepare
-    runs-on: ubuntu-latest
-    environment: prod_global
-    permissions:
-      contents: write
-    steps:
-      - name: skip sync for non-global deploy
-        if: needs.prepare.outputs.should_sync_github != 'true'
-        run: echo "跳过 Gitee -> GitHub 同步"
-
-      - name: mirror gitee repo to github
-        if: needs.prepare.outputs.should_sync_github == 'true'
-        shell: bash
-        env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/gitee_sync_key
-          chmod 600 ~/.ssh/gitee_sync_key
-
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-          # 使用 HTTPS 从 Gitee 拉取镜像，避免 SSH 22 端口连通性问题。
-          rm -rf /tmp/egeek-international.git
-          GITEE_BASIC_AUTH=$(printf '%s' "${GITEE_USERNAME}:${GITEE_TOKEN}" | base64 | tr -d '\n')
-          git -c "http.https://gitee.com/.extraheader=Authorization: Basic ${GITEE_BASIC_AUTH}" clone --mirror https://gitee.com/egeek-dev/egeek-international.git /tmp/egeek-international.git
-          cd /tmp/egeek-international.git
-          git remote add github git@github.com:egeek-dev/egeek-international.git
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --force --prune github "refs/heads/*:refs/heads/*" "refs/tags/*:refs/tags/*"
 
   deploy:
-    needs:
-      - prepare
-      - sync_to_github
-    if: github.event.inputs.action != '🔄 仅同步镜像到 github (sync_github)'
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
