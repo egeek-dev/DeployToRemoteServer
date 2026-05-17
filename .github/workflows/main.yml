@@ -119,8 +119,8 @@ jobs:
           rm -rf /tmp/egeek-international.git
           GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git clone --mirror git@gitee.com:egeek-dev/egeek-international.git /tmp/egeek-international.git
           cd /tmp/egeek-international.git
-          git remote add github git@github.com:egeek-dev/egeek-international.git
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --force --prune github "refs/heads/*:refs/heads/*" "refs/tags/*:refs/tags/*"
+          # git remote add github git@github.com:egeek-dev/egeek-international.git
+          # GIT_SSH_COMMAND="ssh -i ~/.ssh/gitee_sync_key -o StrictHostKeyChecking=yes" git push --force --prune github "refs/heads/*:refs/heads/*" "refs/tags/*:refs/tags/*"
 
   deploy:
     needs:
