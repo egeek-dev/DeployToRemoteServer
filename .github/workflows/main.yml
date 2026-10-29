@@ -47,7 +47,7 @@ on:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       deploy_matrix: ${{ steps.resolve_envs.outputs.deploy_matrix }}
     steps:
@@ -79,7 +79,7 @@ jobs:
 
   deploy:
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
