@@ -27,23 +27,28 @@ on:
         type: boolean
         default: false
       action:
-        description: '动作'
+        description: '部署内容'
         required: true
         type: choice
         options:
-          - '📦 部署业务 (artifacts)'
-          - '🌐 部署 FRP (frp)'
-          - '📥 仅拉取分支、准备环境 (pull_prepare)'
-        default: '📦 部署业务 (artifacts)'
-      cache_strategy:
-        description: '构建缓存策略'
+          - '业务 (artifacts)'
+          - 'FRP (frp)'
+          - '仅准备环境 (pull_prepare)'
+        default: '业务 (artifacts)'
+      build_strategy:
+        description: '构建方式（FRP 忽略，缓存另选）'
         required: true
         type: choice
         options:
-          - '⚡ 使用缓存构建 (use_cache)'
-          - '🛠️ 清除业务缓存 (no_cache)'
-          - '🧨 彻底全量构建 (full_reset)'
-        default: '⚡ 使用缓存构建 (use_cache)'
+          - '全部重建 (infra)'
+          - '重建依赖 (base)'
+          - '增量更新 (cache)'
+        default: '增量更新 (cache)'
+      use_cache:
+        description: '使用缓存（FRP 忽略）'
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   prepare:
@@ -158,22 +163,13 @@ jobs:
               exit 0
             fi
 
-            # --- 缓存参数解析逻辑 ---
-            RAW_STR="${{ github.event.inputs.cache_strategy }}"
-            # 使用 grep 提取括号内的值 (use_cache / no_cache / full_reset)
-            CACHE_VALUE=$(echo $RAW_STR | grep -oP '\(\K[^\)]+')
+            # 构建范围与步骤缓存独立选择；FRP 已在上方独立处理。
+            RAW_STR="${{ github.event.inputs.build_strategy }}"
+            BUILD_STRATEGY=$(echo "$RAW_STR" | grep -oP '\(\K[^\)]+')
+            BUILD_PARAMS="${BUILD_PARAMS} --build-strategy ${BUILD_STRATEGY}"
 
-            CACHE_PARAMS=""
-            case "$CACHE_VALUE" in
-              "no_cache")
-                BUILD_PARAMS="${BUILD_PARAMS} --no-cache"
-                ;;
-              "full_reset")
-                BUILD_PARAMS="${BUILD_PARAMS} --no-cache --full-reset"
-                ;;
-              *)
-                # 默认为 use_cache
-                ;;
-            esac
+            if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
+              BUILD_PARAMS="${BUILD_PARAMS} --no-cache"
+            fi
 
             ${{ env.REPO_PATH }}/build.sh ${BUILD_PARAMS}
