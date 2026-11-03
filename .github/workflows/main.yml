@@ -134,10 +134,27 @@ jobs:
           unset SSH_KEY
           ssh_port="${SSH_PORT:-22}"
 
-          # 与 startup 脚本读取的 ED25519 主机公钥对应；指纹匹配前不发送部署数据。
-          ssh-keyscan -T 30 -p "$ssh_port" -t ed25519 "$SSH_HOST" > "$ssh_dir/known_hosts"
-          actual_fingerprint=$(ssh-keygen -lf "$ssh_dir/known_hosts" -E sha256 | awk '{print $2}' | sort -u)
-          if [ "$actual_fingerprint" != "$SSH_FINGERPRINT" ]; then
+          # 兼容不同主机密钥类型，只信任指纹匹配的公钥及其对应算法。
+          ssh-keyscan -T 30 -p "$ssh_port" -t ed25519,ecdsa,rsa "$SSH_HOST" > "$ssh_dir/host_keys"
+          host_key_algorithms=""
+          while IFS= read -r host_key; do
+            printf '%s\n' "$host_key" > "$ssh_dir/candidate_key"
+            actual_fingerprint=$(ssh-keygen -lf "$ssh_dir/candidate_key" -E sha256 2>/dev/null | awk '{print $2}') || continue
+            [ "$actual_fingerprint" = "$SSH_FINGERPRINT" ] || continue
+
+            case "$(awk '{print $2}' <<< "$host_key")" in
+              ssh-ed25519) host_key_algorithms="ssh-ed25519" ;;
+              ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)
+                host_key_algorithms="$(awk '{print $2}' <<< "$host_key")"
+                ;;
+              ssh-rsa) host_key_algorithms="rsa-sha2-512,rsa-sha2-256" ;;
+              *) continue ;;
+            esac
+            printf '%s\n' "$host_key" > "$ssh_dir/known_hosts"
+            break
+          done < "$ssh_dir/host_keys"
+
+          if [ -z "$host_key_algorithms" ]; then
             echo "错误：SSH 服务器指纹不匹配，已终止部署。" >&2
             exit 1
           fi
@@ -240,7 +257,7 @@ jobs:
               -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$ssh_dir/known_hosts" \
               -o GlobalKnownHostsFile=/dev/null \
-              -o HostKeyAlgorithms=ssh-ed25519 \
+              -o HostKeyAlgorithms="$host_key_algorithms" \
               -o ConnectTimeout=30 \
               -o ServerAliveInterval=15 \
               -o ServerAliveCountMax=3 \
