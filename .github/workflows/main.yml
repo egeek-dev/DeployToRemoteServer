@@ -33,10 +33,11 @@ on:
         options:
           - '业务 (artifacts)'
           - 'FRP (frp)'
+          - '仅拉取代码 (pull_only)'
           - '仅准备环境 (pull_prepare)'
         default: '业务 (artifacts)'
       build_strategy:
-        description: '构建方式（FRP 忽略，缓存另选）'
+        description: '构建方式（FRP、仅拉代码忽略，缓存另选）'
         required: true
         type: choice
         options:
@@ -45,10 +46,13 @@ on:
           - '增量更新 (cache)'
         default: '增量更新 (cache)'
       use_cache:
-        description: '使用缓存（FRP 忽略）'
+        description: '使用缓存（FRP、仅拉代码忽略）'
         required: true
         type: boolean
         default: true
+
+# SSH 部署无需使用 GITHUB_TOKEN 访问仓库 API。
+permissions: {}
 
 jobs:
   prepare:
@@ -85,6 +89,7 @@ jobs:
   deploy:
     needs: prepare
     runs-on: ubuntu-24.04
+    timeout-minutes: 65
     strategy:
       fail-fast: false
       matrix:
@@ -95,18 +100,64 @@ jobs:
       ENC_KEY: ${{ secrets.ENC_KEY }}
       PROXIES_JSON: ${{ secrets.PROXIES_JSON }}
     steps:
-      - name: executing remote ssh commands to develop
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          command_timeout: '60m'
-          envs: ENC_KEY,PROXIES_JSON
-          script: |
+      - name: 检查 SSH 服务器指纹
+        shell: bash
+        env:
+          SSH_FINGERPRINT: ${{ secrets.SSH_FINGERPRINT }}
+        run: |
+          if [[ ! "$SSH_FINGERPRINT" =~ ^SHA256:[A-Za-z0-9+/]{43}$ ]]; then
+            echo "错误：请在当前 GitHub 环境中配置 SSH_FINGERPRINT，填写完整的 SHA256:... 指纹值。" >&2
+            exit 1
+          fi
+
+      - name: 通过 SSH 执行部署
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_FINGERPRINT: ${{ secrets.SSH_FINGERPRINT }}
+          TARGET_ENVIRONMENT: ${{ matrix.environment }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          RAW_ACTION: ${{ inputs.action }}
+          RAW_STR: ${{ inputs.build_strategy }}
+          USE_CACHE: ${{ inputs.use_cache }}
+        run: |
+          set -euo pipefail
+
+          # 临时保存登录密钥及经指纹校验的主机公钥，退出时清理。
+          umask 077
+          ssh_dir=$(mktemp -d "$RUNNER_TEMP/deploy-ssh.XXXXXX")
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$ssh_dir/key"
+          unset SSH_KEY
+          ssh_port="${SSH_PORT:-22}"
+
+          # 与 startup 脚本读取的 ED25519 主机公钥对应；指纹匹配前不发送部署数据。
+          ssh-keyscan -T 30 -p "$ssh_port" -t ed25519 "$SSH_HOST" > "$ssh_dir/known_hosts"
+          actual_fingerprint=$(ssh-keygen -lf "$ssh_dir/known_hosts" -E sha256 | awk '{print $2}' | sort -u)
+          if [ "$actual_fingerprint" != "$SSH_FINGERPRINT" ]; then
+            echo "错误：SSH 服务器指纹不匹配，已终止部署。" >&2
+            exit 1
+          fi
+
+          # Bash 引用保留密钥、JSON 等变量中的引号、换行和特殊字符。
+          {
+            printf 'export %s=%q\n' \
+              ENC_KEY "$ENC_KEY" \
+              PROXIES_JSON "$PROXIES_JSON" \
+              REPO_PATH "$REPO_PATH" \
+              TARGET_ENVIRONMENT "$TARGET_ENVIRONMENT" \
+              BRANCH_NAME "$BRANCH_NAME" \
+              RAW_ACTION "$RAW_ACTION" \
+              RAW_STR "$RAW_STR" \
+              USE_CACHE "$USE_CACHE"
+            cat <<'REMOTE_SCRIPT'
+            set -e
+
             cd /
-            case "${{ matrix.environment }}" in
+            case "$TARGET_ENVIRONMENT" in
               "test")
                 DEPLOY_ENV="cn"
                 APP_ENV="test"
@@ -123,21 +174,24 @@ jobs:
                 DEPLOY_TO="global-prod"
                 ;;
               *)
-                echo "❌ 未知环境: ${{ matrix.environment }}"
+                echo "❌ 未知环境: $TARGET_ENVIRONMENT"
                 exit 1
                 ;;
             esac
 
-            chmod +x ${{ env.REPO_PATH }}/build-git-pull.sh
-            ${{ env.REPO_PATH }}/build-git-pull.sh -branch_name ${{ github.event.inputs.branch_name }} -deploy-env ${DEPLOY_ENV}
+            chmod +x "$REPO_PATH/build-git-pull.sh" || exit $?
+            bash -e "$REPO_PATH/build-git-pull.sh" -branch_name "$BRANCH_NAME" -deploy-env "$DEPLOY_ENV" || exit $?
 
-            RAW_ACTION="${{ github.event.inputs.action }}"
             ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
             if [ -z "$ACTION" ]; then
               ACTION="$RAW_ACTION"
             fi
 
-            chmod +x ${{ env.REPO_PATH }}/build.sh
+            if [ "$ACTION" = "pull_only" ]; then
+              exit 0
+            fi
+
+            chmod +x "$REPO_PATH/build.sh"
             BUILD_PARAMS="-deploy-env ${DEPLOY_ENV} -env ${APP_ENV}"
 
             if [ "$ACTION" = "pull_prepare" ]; then
@@ -145,7 +199,7 @@ jobs:
             fi
 
             if [ "$ACTION" = "frp" ]; then
-              chmod +x ${{ env.REPO_PATH }}/build-frp.sh
+              chmod +x "$REPO_PATH/build-frp.sh"
 
               FRP_PARAM=""
               FRP_EXTRA_PARAM=""
@@ -159,17 +213,36 @@ jobs:
                 exit 0
               fi
 
-              ${{ env.REPO_PATH }}/build-frp.sh ${FRP_PARAM} ${FRP_EXTRA_PARAM}
+              "$REPO_PATH/build-frp.sh" ${FRP_PARAM} ${FRP_EXTRA_PARAM}
               exit 0
             fi
 
             # 构建范围与步骤缓存独立选择；FRP 已在上方独立处理。
-            RAW_STR="${{ github.event.inputs.build_strategy }}"
             BUILD_STRATEGY=$(echo "$RAW_STR" | grep -oP '\(\K[^\)]+')
             BUILD_PARAMS="${BUILD_PARAMS} --build-strategy ${BUILD_STRATEGY}"
 
-            if [ "${{ github.event.inputs.use_cache }}" = "false" ]; then
+            if [ "$USE_CACHE" = "false" ]; then
               BUILD_PARAMS="${BUILD_PARAMS} --no-cache"
             fi
 
-            ${{ env.REPO_PATH }}/build.sh ${BUILD_PARAMS}
+            "$REPO_PATH/build.sh" ${BUILD_PARAMS}
+          REMOTE_SCRIPT
+          } > "$ssh_dir/deploy.sh"
+
+          # 远端限制执行时间为 60 分钟，本地超时作为连接异常时的兜底。
+          timeout --signal=TERM --kill-after=30s 61m \
+            ssh -F /dev/null -T \
+              -p "$ssh_port" \
+              -i "$ssh_dir/key" \
+              -l "$SSH_USERNAME" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$ssh_dir/known_hosts" \
+              -o GlobalKnownHostsFile=/dev/null \
+              -o HostKeyAlgorithms=ssh-ed25519 \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=3 \
+              "$SSH_HOST" \
+              'timeout --signal=TERM --kill-after=30s 60m bash -se' < "$ssh_dir/deploy.sh"
