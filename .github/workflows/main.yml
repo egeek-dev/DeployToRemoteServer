@@ -197,7 +197,7 @@ jobs:
             esac
 
             chmod +x "$REPO_PATH/build-git-pull.sh" || exit $?
-            bash -e "$REPO_PATH/build-git-pull.sh" -branch_name "$BRANCH_NAME" -deploy-env "$DEPLOY_ENV" || exit $?
+            bash "$REPO_PATH/build-git-pull.sh" -branch_name "$BRANCH_NAME" -deploy-env "$DEPLOY_ENV" || exit $?
 
             ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
             if [ -z "$ACTION" ]; then
