@@ -37,7 +37,7 @@ on:
           - '仅准备环境 (pull_prepare)'
         default: '业务 (artifacts)'
       build_strategy:
-        description: '构建方式（FRP、仅拉代码忽略，缓存另选）'
+        description: '构建方式（FRP、仅拉代码忽略，清理缓存另选）'
         required: true
         type: choice
         options:
@@ -45,11 +45,11 @@ on:
           - '重建依赖 (base)'
           - '增量更新 (cache)'
         default: '增量更新 (cache)'
-      use_cache:
-        description: '使用缓存（FRP、仅拉代码忽略）'
+      clear_cache:
+        description: '清除构建缓存（FRP、仅拉代码忽略）'
         required: true
         type: boolean
-        default: true
+        default: false
 
 # SSH 部署无需使用 GITHUB_TOKEN 访问仓库 API。
 permissions: {}
@@ -122,7 +122,7 @@ jobs:
           BRANCH_NAME: ${{ inputs.branch_name }}
           RAW_ACTION: ${{ inputs.action }}
           RAW_STR: ${{ inputs.build_strategy }}
-          USE_CACHE: ${{ inputs.use_cache }}
+          CLEAR_CACHE: ${{ inputs.clear_cache }}
         run: |
           set -euo pipefail
 
@@ -169,7 +169,7 @@ jobs:
               BRANCH_NAME "$BRANCH_NAME" \
               RAW_ACTION "$RAW_ACTION" \
               RAW_STR "$RAW_STR" \
-              USE_CACHE "$USE_CACHE"
+              CLEAR_CACHE "$CLEAR_CACHE"
             cat <<'REMOTE_SCRIPT'
             set -e
 
@@ -234,12 +234,12 @@ jobs:
               exit 0
             fi
 
-            # 构建范围与步骤缓存独立选择；FRP 已在上方独立处理。
+            # 构建范围与缓存清理独立选择；FRP 已在上方独立处理。
             BUILD_STRATEGY=$(echo "$RAW_STR" | grep -oP '\(\K[^\)]+')
             BUILD_PARAMS="${BUILD_PARAMS} --build-strategy ${BUILD_STRATEGY}"
 
-            if [ "$USE_CACHE" = "false" ]; then
-              BUILD_PARAMS="${BUILD_PARAMS} --no-cache"
+            if [ "$CLEAR_CACHE" = "true" ]; then
+              BUILD_PARAMS="${BUILD_PARAMS} --clear-cache"
             fi
 
             "$REPO_PATH/build.sh" ${BUILD_PARAMS}
