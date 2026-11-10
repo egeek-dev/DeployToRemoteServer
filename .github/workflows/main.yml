@@ -47,7 +47,6 @@ jobs:
     env:
       REPO_PATH: '/usr/local/egeek/repo'
       ENC_KEY: ${{ secrets.ENC_KEY }}
-      PROXIES_JSON: ${{ secrets.PROXIES_JSON }}
     steps:
       - name: 检查 SSH 服务器指纹
         shell: bash
@@ -113,7 +112,6 @@ jobs:
           {
             printf 'export %s=%q\n' \
               ENC_KEY "$ENC_KEY" \
-              PROXIES_JSON "$PROXIES_JSON" \
               REPO_PATH "$REPO_PATH" \
               TARGET_ENVIRONMENT "$TARGET_ENVIRONMENT" \
               BRANCH_NAME "$BRANCH_NAME" \
