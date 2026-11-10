@@ -3,53 +3,10 @@ name: Deploy to Remote Server
 on:
   workflow_dispatch:
     inputs:
-      branch_name:
-        description: '请选择构建分支'
+      deployment_plan:
+        description: '由本地 pnpm run deploy 生成的部署清单 JSON'
         required: true
-        type: choice
-        options:
-          - dev
-          - master
-        default: dev
-      deploy_to_cn_test:
-        description: '部署到测试环境 (cn-test)'
-        required: true
-        type: boolean
-        default: true
-      deploy_to_cn_prod:
-        description: '部署到生产环境 (cn-prod)'
-        required: true
-        type: boolean
-        default: false
-      deploy_to_global_prod:
-        description: '部署到海外生产环境 (global-prod)'
-        required: true
-        type: boolean
-        default: false
-      action:
-        description: '部署内容'
-        required: true
-        type: choice
-        options:
-          - '业务 (artifacts)'
-          - 'FRP (frp)'
-          - '仅拉取代码 (pull_only)'
-          - '仅准备环境 (pull_prepare)'
-        default: '业务 (artifacts)'
-      build_strategy:
-        description: '构建方式（FRP、仅拉代码忽略，清理缓存另选）'
-        required: true
-        type: choice
-        options:
-          - '全部重建 (infra)'
-          - '重建依赖 (base)'
-          - '增量更新 (cache)'
-        default: '增量更新 (cache)'
-      clear_cache:
-        description: '清除构建缓存（FRP、仅拉代码忽略）'
-        required: true
-        type: boolean
-        default: false
+        type: string
 
 # SSH 部署无需使用 GITHUB_TOKEN 访问仓库 API。
 permissions: {}
@@ -60,30 +17,19 @@ jobs:
     outputs:
       deploy_matrix: ${{ steps.resolve_envs.outputs.deploy_matrix }}
     steps:
-      - name: resolve deploy environments
+      - name: 根据部署清单生成环境矩阵
         id: resolve_envs
         shell: bash
+        env:
+          DEPLOYMENT_PLAN: ${{ inputs.deployment_plan }}
         run: |
-          matrix_items=()
-
-          if [ "${{ github.event.inputs.deploy_to_cn_test }}" = "true" ]; then
-            matrix_items+=("{\"environment\":\"test\"}")
-          fi
-
-          if [ "${{ github.event.inputs.deploy_to_cn_prod }}" = "true" ]; then
-            matrix_items+=("{\"environment\":\"prod\"}")
-          fi
-
-          if [ "${{ github.event.inputs.deploy_to_global_prod }}" = "true" ]; then
-            matrix_items+=("{\"environment\":\"prod_global\"}")
-          fi
-
-          if [ ${#matrix_items[@]} -eq 0 ]; then
-            echo "请至少选择一个部署环境（cn-test、cn-prod 或 global-prod）"
-            exit 1
-          fi
-
-          deploy_matrix="[$(IFS=,; echo "${matrix_items[*]}")]"
+          set -euo pipefail
+          deploy_matrix=$(jq -c '
+            .branch as $branch | [.targets[] | . + {
+              branch: $branch,
+              environment: ({"cn-test":"test","cn-prod":"prod","global-prod":"prod_global"}[.target])
+            }]
+          ' <<< "$DEPLOYMENT_PLAN")
           echo "deploy_matrix=${deploy_matrix}" >> "$GITHUB_OUTPUT"
 
   deploy:
@@ -95,6 +41,9 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.prepare.outputs.deploy_matrix) }}
     environment: ${{ matrix.environment }}
+    concurrency:
+      group: deploy-${{ matrix.environment }}
+      cancel-in-progress: false
     env:
       REPO_PATH: '/usr/local/egeek/repo'
       ENC_KEY: ${{ secrets.ENC_KEY }}
@@ -119,10 +68,11 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_FINGERPRINT: ${{ secrets.SSH_FINGERPRINT }}
           TARGET_ENVIRONMENT: ${{ matrix.environment }}
-          BRANCH_NAME: ${{ inputs.branch_name }}
-          RAW_ACTION: ${{ inputs.action }}
-          RAW_STR: ${{ inputs.build_strategy }}
-          CLEAR_CACHE: ${{ inputs.clear_cache }}
+          BRANCH_NAME: ${{ matrix.branch }}
+          ACTION: ${{ matrix.action }}
+          BUILD_STRATEGY: ${{ matrix.buildStrategy }}
+          CLEAR_CACHE: ${{ matrix.clearCache }}
+          DEPLOY_SERVICES_JSON: ${{ toJson(matrix.services) }}
         run: |
           set -euo pipefail
 
@@ -167,8 +117,9 @@ jobs:
               REPO_PATH "$REPO_PATH" \
               TARGET_ENVIRONMENT "$TARGET_ENVIRONMENT" \
               BRANCH_NAME "$BRANCH_NAME" \
-              RAW_ACTION "$RAW_ACTION" \
-              RAW_STR "$RAW_STR" \
+              ACTION "$ACTION" \
+              BUILD_STRATEGY "$BUILD_STRATEGY" \
+              DEPLOY_SERVICES_JSON "$DEPLOY_SERVICES_JSON" \
               CLEAR_CACHE "$CLEAR_CACHE"
             cat <<'REMOTE_SCRIPT'
             set -e
@@ -199,20 +150,15 @@ jobs:
             chmod +x "$REPO_PATH/build-git-pull.sh" || exit $?
             bash -e "$REPO_PATH/build-git-pull.sh" -branch_name "$BRANCH_NAME" -deploy-env "$DEPLOY_ENV" || exit $?
 
-            ACTION=$(echo "$RAW_ACTION" | grep -oP '\(\K[^\)]+' || true)
-            if [ -z "$ACTION" ]; then
-              ACTION="$RAW_ACTION"
-            fi
-
             if [ "$ACTION" = "pull_only" ]; then
               exit 0
             fi
 
             chmod +x "$REPO_PATH/build.sh"
-            BUILD_PARAMS="-deploy-env ${DEPLOY_ENV} -env ${APP_ENV}"
+            BUILD_PARAMS=(-deploy-env "$DEPLOY_ENV" -env "$APP_ENV")
 
             if [ "$ACTION" = "pull_prepare" ]; then
-              BUILD_PARAMS="${BUILD_PARAMS} --prepare-only"
+              BUILD_PARAMS+=(--prepare-only)
             fi
 
             if [ "$ACTION" = "frp" ]; then
@@ -235,14 +181,17 @@ jobs:
             fi
 
             # 构建范围与缓存清理独立选择；FRP 已在上方独立处理。
-            BUILD_STRATEGY=$(echo "$RAW_STR" | grep -oP '\(\K[^\)]+')
-            BUILD_PARAMS="${BUILD_PARAMS} --build-strategy ${BUILD_STRATEGY}"
+            BUILD_PARAMS+=(--build-strategy "$BUILD_STRATEGY")
 
-            if [ "$CLEAR_CACHE" = "true" ]; then
-              BUILD_PARAMS="${BUILD_PARAMS} --clear-cache"
+            if [ "$ACTION" = "artifacts" ]; then
+              BUILD_PARAMS+=(--services-json "$DEPLOY_SERVICES_JSON")
             fi
 
-            "$REPO_PATH/build.sh" ${BUILD_PARAMS}
+            if [ "$CLEAR_CACHE" = "true" ]; then
+              BUILD_PARAMS+=(--clear-cache)
+            fi
+
+            "$REPO_PATH/build.sh" "${BUILD_PARAMS[@]}"
           REMOTE_SCRIPT
           } > "$ssh_dir/deploy.sh"
 
